@@ -128,7 +128,7 @@ export default function RequestDetailScreen() {
         <View style={[styles.statusBar, { backgroundColor: statusColor + '22' }]}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+            {request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : ''}
           </Text>
         </View>
 
@@ -155,7 +155,7 @@ export default function RequestDetailScreen() {
           <View style={styles.personRow}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {request.requesterName?.charAt(0).toUpperCase() ?? '?'}
+                {request.requesterName?.charAt(0)?.toUpperCase() ?? '?'}
               </Text>
             </View>
             <Text style={styles.personName}>{request.requesterName}</Text>

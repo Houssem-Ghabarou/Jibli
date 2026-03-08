@@ -12,7 +12,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getTripById, closeTrip, Trip } from '@/lib/firestore/trips';
+import { getTripById, closeTrip, Trip, TripLocation } from '@/lib/firestore/trips';
+import { hasExistingRequest } from '@/lib/firestore/requests';
+import { getFlag } from '@/data/locations';
+
+function locDisplay(loc: TripLocation | string): { name: string; sub: string; flag: string } {
+  if (typeof loc === 'string') return { name: loc, sub: '', flag: '' };
+  const flag = loc.country_code ? getFlag(loc.country_code) : '';
+  const sub = [loc.area, loc.country].filter(Boolean).join(', ');
+  return { name: loc.city_name, sub, flag };
+}
 
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,11 +29,15 @@ export default function TripDetailScreen() {
   const router = useRouter();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
 
   useEffect(() => {
     getTripById(id).then(t => {
       setTrip(t);
       setLoading(false);
+      if (t && user && t.travelerId !== user.uid) {
+        hasExistingRequest(t.id, user.uid).then(setAlreadyRequested);
+      }
     });
   }, [id]);
 
@@ -54,9 +67,9 @@ export default function TripDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.routeBanner}>
-          <Text style={styles.routeCity}>{trip.from}</Text>
+          <Text style={styles.routeCity}>{locDisplay(trip.from).flag} {locDisplay(trip.from).name}</Text>
           <Ionicons name="airplane" size={20} color={Colors.white} />
-          <Text style={styles.routeCity}>{trip.to}</Text>
+          <Text style={styles.routeCity}>{locDisplay(trip.to).flag} {locDisplay(trip.to).name}</Text>
         </View>
         <View style={{ width: 24 }} />
       </View>
@@ -79,6 +92,21 @@ export default function TripDetailScreen() {
                 {trip.status === 'open' ? 'Open' : 'Closed'}
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Route detail */}
+        <View style={styles.gridCard}>
+          <View style={styles.gridItem}>
+            <Text style={styles.gridLabel}>From</Text>
+            <Text style={styles.gridValue}>{locDisplay(trip.from).name}</Text>
+            {locDisplay(trip.from).sub ? <Text style={styles.gridSub}>{locDisplay(trip.from).sub}</Text> : null}
+          </View>
+          <View style={styles.gridDivider} />
+          <View style={styles.gridItem}>
+            <Text style={styles.gridLabel}>To</Text>
+            <Text style={styles.gridValue}>{locDisplay(trip.to).name}</Text>
+            {locDisplay(trip.to).sub ? <Text style={styles.gridSub}>{locDisplay(trip.to).sub}</Text> : null}
           </View>
         </View>
 
@@ -105,7 +133,8 @@ export default function TripDetailScreen() {
         {/* Actions */}
         {!isOwner && trip.status === 'open' && (
           <TouchableOpacity
-            style={styles.ctaButton}
+            style={[styles.ctaButton, alreadyRequested && styles.ctaDisabled]}
+            disabled={alreadyRequested}
             onPress={() =>
               router.push({
                 pathname: '/request/create',
@@ -117,7 +146,9 @@ export default function TripDetailScreen() {
               })
             }
           >
-            <Text style={styles.ctaText}>Request Item Delivery</Text>
+            <Text style={styles.ctaText}>
+              {alreadyRequested ? 'Already Requested' : 'Request Item Delivery'}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -268,6 +299,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textPrimary,
   },
+  gridSub: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -284,6 +320,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     marginTop: 8,
+  },
+  ctaDisabled: {
+    backgroundColor: Colors.textMuted,
   },
   ctaText: {
     color: Colors.white,

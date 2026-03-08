@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,20 +16,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { createTrip } from '@/lib/firestore/trips';
-import { getUserProfile } from '@/lib/firestore/users';
+import LocationField, { SelectedLocation } from '@/components/LocationField';
+import { useUserLocation } from '@/hooks/useUserLocation';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const { city: detectedCity } = useUserLocation();
+
+  const [fromLocation, setFromLocation] = useState<SelectedLocation | null>(null);
+  const [toLocation, setToLocation] = useState<SelectedLocation | null>(null);
   const [date, setDate] = useState('');
   const [capacityKg, setCapacityKg] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (detectedCity && !fromLocation) {
+      setFromLocation({
+        city_id: detectedCity.id,
+        city_name: detectedCity.city,
+        country: detectedCity.country,
+        country_code: detectedCity.country_code,
+      });
+    }
+  }, [detectedCity]);
+
   async function handleCreate() {
-    if (!from.trim() || !to.trim() || !date.trim() || !capacityKg.trim()) {
+    if (!fromLocation || !toLocation || !date.trim() || !capacityKg.trim()) {
       Alert.alert('Missing Fields', 'Please fill in all required fields');
       return;
     }
@@ -42,21 +56,18 @@ export default function CreateTripScreen() {
 
     setLoading(true);
     try {
-      const profile = await getUserProfile(user!.uid);
       await createTrip({
         travelerId: user!.uid,
-        travelerName: profile?.name ?? user!.displayName ?? 'Unknown',
-        travelerAvatar: profile?.avatarUrl ?? null,
-        travelerRating: profile?.rating ?? 0,
-        from: from.trim(),
-        to: to.trim(),
+        travelerName: user!.displayName ?? 'Unknown',
+        travelerAvatar: user!.photoURL ?? null,
+        travelerRating: 0,
+        from: fromLocation,
+        to: toLocation,
         date: date.trim(),
         capacityKg: kg,
         notes: notes.trim(),
       });
-      Alert.alert('Trip Posted!', 'Your trip is now visible to requesters.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      router.back();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to create trip');
     } finally {
@@ -78,27 +89,21 @@ export default function CreateTripScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-        <View style={styles.field}>
-          <Text style={styles.label}>From *</Text>
-          <TextInput
-            style={styles.input}
-            value={from}
-            onChangeText={setFrom}
-            placeholder="e.g. Tunis"
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
+        <LocationField
+          label="From *"
+          value={fromLocation}
+          onChange={setFromLocation}
+          placeholder="Departure city"
+          userLocation={detectedCity}
+        />
 
-        <View style={styles.field}>
-          <Text style={styles.label}>To *</Text>
-          <TextInput
-            style={styles.input}
-            value={to}
-            onChangeText={setTo}
-            placeholder="e.g. Paris"
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
+        <LocationField
+          label="To *"
+          value={toLocation}
+          onChange={setToLocation}
+          placeholder="Destination city"
+          userLocation={detectedCity}
+        />
 
         <View style={styles.field}>
           <Text style={styles.label}>Departure Date *</Text>

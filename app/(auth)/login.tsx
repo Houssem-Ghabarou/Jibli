@@ -31,7 +31,16 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       // AuthGuard will redirect to tabs
     } catch (err: any) {
-      Alert.alert('Login Failed', err.message || 'Invalid email or password');
+      const code = err?.code ?? '';
+      const message =
+        code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
+          ? 'Incorrect email or password. Please try again.'
+          : code === 'auth/invalid-email'
+          ? 'Please enter a valid email address.'
+          : code === 'auth/too-many-requests'
+          ? 'Too many failed attempts. Try again later.'
+          : err.message || 'Login failed. Please try again.';
+      Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);
     }

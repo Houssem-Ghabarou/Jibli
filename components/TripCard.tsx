@@ -2,7 +2,19 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Trip } from '@/lib/firestore/trips';
+import { getFlag } from '@/data/locations';
 import { format } from 'date-fns';
+
+function locName(loc: Trip['from']): string {
+  return typeof loc === 'string' ? loc : loc.city_name;
+}
+function locFlag(loc: Trip['from']): string {
+  if (typeof loc === 'string') return '';
+  return loc.country_code ? getFlag(loc.country_code) : '';
+}
+function locArea(loc: Trip['from']): string | undefined {
+  return typeof loc === 'string' ? undefined : loc.area;
+}
 
 interface Props {
   trip: Trip;
@@ -38,9 +50,15 @@ export default function TripCard({ trip }: Props) {
       </View>
 
       <View style={styles.routeRow}>
-        <Text style={styles.city}>{trip.from}</Text>
-        <Text style={styles.arrow}>✈ ──────</Text>
-        <Text style={styles.city}>{trip.to}</Text>
+        <View style={styles.cityBlock}>
+          <Text style={styles.city}>{locFlag(trip.from)} {locName(trip.from)}</Text>
+          {locArea(trip.from) ? <Text style={styles.area}>{locArea(trip.from)}</Text> : null}
+        </View>
+        <Text style={styles.arrow}>✈</Text>
+        <View style={[styles.cityBlock, styles.cityBlockRight]}>
+          <Text style={styles.city}>{locFlag(trip.to)} {locName(trip.to)}</Text>
+          {locArea(trip.to) ? <Text style={[styles.area, { textAlign: 'right' }]}>{locArea(trip.to)}</Text> : null}
+        </View>
       </View>
 
       <View style={styles.metaRow}>
@@ -141,18 +159,28 @@ const styles = StyleSheet.create({
   routeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 4,
+    gap: 8,
+  },
+  cityBlock: {
+    flex: 1,
+  },
+  cityBlockRight: {
+    alignItems: 'flex-end',
   },
   city: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
+  area: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
   arrow: {
     color: Colors.accent,
-    fontSize: 14,
-    flex: 1,
+    fontSize: 16,
     textAlign: 'center',
   },
   metaRow: {

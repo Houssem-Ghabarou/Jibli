@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,44 +16,89 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getTrips, Trip } from '@/lib/firestore/trips';
 import TripCard from '@/components/TripCard';
+import LocationPicker, { PickerResult } from '@/components/LocationPicker';
+import { useUserLocation } from '@/hooks/useUserLocation';
+import { getFlag } from '@/data/locations';
+
+interface SearchLocation {
+  city_name: string;
+  country_code: string;
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { city: detectedCity } = useUserLocation();
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchFrom, setSearchFrom] = useState('');
-  const [searchTo, setSearchTo] = useState('');
 
-  async function fetchTrips() {
+  const [fromFilter, setFromFilter] = useState<SearchLocation | null>(null);
+  const [toFilter, setToFilter] = useState<SearchLocation | null>(null);
+  const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
+
+  async function fetchTrips(from?: string, to?: string) {
     try {
-      const data = await getTrips({
-        from: searchFrom.trim() || undefined,
-        to: searchTo.trim() || undefined,
-      });
+      const data = await getTrips({ from, to });
       setTrips(data);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to load trips');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }
 
-  useEffect(() => {
-    fetchTrips();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTrips(fromFilter?.city_name, toFilter?.city_name);
+    }, [])
+  );
 
   function onRefresh() {
     setRefreshing(true);
-    fetchTrips();
+    fetchTrips(fromFilter?.city_name, toFilter?.city_name);
   }
 
   function onSearch() {
     setLoading(true);
-    fetchTrips();
+    fetchTrips(fromFilter?.city_name, toFilter?.city_name);
+  }
+
+  function handlePickerSelect(result: PickerResult) {
+    const loc: SearchLocation = 'custom' in result
+      ? { city_name: result.city, country_code: '' }
+      : { city_name: result.city, country_code: result.country_code };
+
+    if (pickerFor === 'from') setFromFilter(loc);
+    else setToFilter(loc);
   }
 
   const firstName = user?.displayName?.split(' ')[0] ?? 'there';
+
+  function SearchField({ filter, placeholder, icon }: { filter: SearchLocation | null; placeholder: string; icon: string }) {
+    const flag = filter?.country_code ? getFlag(filter.country_code) : null;
+    return (
+      <View style={styles.searchInput}>
+        {flag
+          ? <Text style={styles.flagSmall}>{flag}</Text>
+          : <Ionicons name={icon as any} size={16} color={Colors.textMuted} />
+        }
+        <Text style={[styles.searchText, !filter && styles.searchPlaceholder]} numberOfLines={1}>
+          {filter ? filter.city_name : placeholder}
+        </Text>
+        {filter && (
+          <TouchableOpacity onPress={() => {
+            if (placeholder === 'From...') setFromFilter(null);
+            else setToFilter(null);
+          }}>
+            <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -69,26 +115,12 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.searchRow}>
-          <View style={styles.searchInput}>
-            <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
-            <TextInput
-              style={styles.searchText}
-              value={searchFrom}
-              onChangeText={setSearchFrom}
-              placeholder="From..."
-              placeholderTextColor={Colors.textMuted}
-            />
-          </View>
-          <View style={styles.searchInput}>
-            <Ionicons name="navigate-outline" size={16} color={Colors.textMuted} />
-            <TextInput
-              style={styles.searchText}
-              value={searchTo}
-              onChangeText={setSearchTo}
-              placeholder="To..."
-              placeholderTextColor={Colors.textMuted}
-            />
-          </View>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setPickerFor('from')}>
+            <SearchField filter={fromFilter} placeholder="From..." icon="location-outline" />
+          </TouchableOpacity>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setPickerFor('to')}>
+            <SearchField filter={toFilter} placeholder="To..." icon="navigate-outline" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.searchButton} onPress={onSearch}>
             <Ionicons name="search" size={18} color={Colors.white} />
           </TouchableOpacity>
@@ -118,6 +150,13 @@ export default function HomeScreen() {
           }
         />
       )}
+
+      <LocationPicker
+        visible={pickerFor !== null}
+        onClose={() => setPickerFor(null)}
+        onSelect={handlePickerSelect}
+        userLocation={detectedCity}
+      />
     </View>
   );
 }
@@ -164,10 +203,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 6,
   },
+  flagSmall: {
+    fontSize: 16,
+  },
   searchText: {
     flex: 1,
     color: Colors.white,
     fontSize: 14,
+  },
+  searchPlaceholder: {
+    color: 'rgba(255,255,255,0.5)',
   },
   searchButton: {
     backgroundColor: Colors.accent,

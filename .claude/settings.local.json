@@ -5,7 +5,12 @@
       "WebSearch",
       "Bash(npm install)",
       "Bash(npm install --legacy-peer-deps)",
-      "Bash(npx expo install @react-native-firebase/app @react-native-firebase/auth @react-native-firebase/firestore @react-native-firebase/storage @react-native-async-storage/async-storage react-hook-form zod date-fns)"
+      "Bash(npx expo install @react-native-firebase/app @react-native-firebase/auth @react-native-firebase/firestore @react-native-firebase/storage @react-native-async-storage/async-storage react-hook-form zod date-fns)",
+      "Bash(npx expo start --no-dev)",
+      "Bash(npx expo prebuild --clean)",
+      "Bash(npx expo run:android)",
+      "Read(//c/Jibli/$LOCALAPPDATA/Android/Sdk/**)",
+      "Read(//c/Users/Houssem Ghabarou/AppData/Local/Android/Sdk/ndk/**)"
     ]
   }
 }

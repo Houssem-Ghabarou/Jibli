@@ -50,7 +50,7 @@ export default function CreateRequestScreen() {
     setLoading(true);
     try {
       const profile = await getUserProfile(user!.uid);
-      await createRequest({
+      const requestId = await createRequest({
         tripId,
         travelerId,
         requesterId: user!.uid,
@@ -67,7 +67,7 @@ export default function CreateRequestScreen() {
         'new_request',
         'New Request',
         `${profile?.name ?? 'Someone'} wants you to bring: ${itemName.trim()}`,
-        tripId
+        requestId
       );
 
       Alert.alert('Request Sent!', 'The traveler will review your request.', [

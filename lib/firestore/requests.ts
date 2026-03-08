@@ -58,6 +58,15 @@ export async function getRequestById(id: string): Promise<Request | null> {
   return { id: doc.id, ...doc.data() } as Request;
 }
 
+export async function hasExistingRequest(tripId: string, requesterId: string): Promise<boolean> {
+  const snapshot = await firestore()
+    .collection('requests')
+    .where('tripId', '==', tripId)
+    .where('requesterId', '==', requesterId)
+    .get();
+  return !snapshot.empty;
+}
+
 export async function getRequestsByTrip(tripId: string): Promise<Request[]> {
   const snapshot = await firestore()
     .collection('requests')

@@ -1,13 +1,21 @@
 import firestore from '@react-native-firebase/firestore';
 
+export interface TripLocation {
+  city_id: string;
+  city_name: string;
+  country: string;
+  country_code: string;
+  area?: string;
+}
+
 export interface Trip {
   id: string;
   travelerId: string;
   travelerName: string;
   travelerAvatar: string | null;
   travelerRating: number;
-  from: string;
-  to: string;
+  from: TripLocation | string;
+  to: TripLocation | string;
   date: string;
   capacityKg: number;
   notes: string;
@@ -20,8 +28,8 @@ export interface CreateTripData {
   travelerName: string;
   travelerAvatar: string | null;
   travelerRating: number;
-  from: string;
-  to: string;
+  from: TripLocation;
+  to: TripLocation;
   date: string;
   capacityKg: number;
   notes: string;
@@ -32,24 +40,30 @@ export interface TripFilters {
   to?: string;
 }
 
+function locationName(loc: TripLocation | string): string {
+  return typeof loc === 'string' ? loc : loc.city_name;
+}
+
 export async function getTrips(filters?: TripFilters): Promise<Trip[]> {
-  let query: any = firestore()
+  const snapshot = await firestore()
     .collection('trips')
     .where('status', '==', 'open')
-    .orderBy('createdAt', 'desc');
+    .get();
 
-  const snapshot = await query.get();
-  const trips = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Trip[];
+  let trips = (snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Trip[])
+    .sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? 0;
+      const bTime = b.createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
 
   if (filters?.from) {
-    return trips.filter(t =>
-      t.from.toLowerCase().includes(filters.from!.toLowerCase())
-    );
+    const q = filters.from.toLowerCase();
+    trips = trips.filter(t => locationName(t.from).toLowerCase().includes(q));
   }
   if (filters?.to) {
-    return trips.filter(t =>
-      t.to.toLowerCase().includes(filters.to!.toLowerCase())
-    );
+    const q = filters.to.toLowerCase();
+    trips = trips.filter(t => locationName(t.to).toLowerCase().includes(q));
   }
 
   return trips;
