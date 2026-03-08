@@ -1,98 +1,203 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { getTrips, Trip } from '@/lib/firestore/trips';
+import TripCard from '@/components/TripCard';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { user } = useAuth();
+  const router = useRouter();
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchFrom, setSearchFrom] = useState('');
+  const [searchTo, setSearchTo] = useState('');
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  async function fetchTrips() {
+    try {
+      const data = await getTrips({
+        from: searchFrom.trim() || undefined,
+        to: searchTo.trim() || undefined,
+      });
+      setTrips(data);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  function onRefresh() {
+    setRefreshing(true);
+    fetchTrips();
+  }
+
+  function onSearch() {
+    setLoading(true);
+    fetchTrips();
+  }
+
+  const firstName = user?.displayName?.split(' ')[0] ?? 'there';
+
+  return (
+    <View style={styles.container}>
+      {/* Dark Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+            <Text style={styles.subtitle}>Find a traveler for your delivery</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications-outline" size={26} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchRow}>
+          <View style={styles.searchInput}>
+            <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
+            <TextInput
+              style={styles.searchText}
+              value={searchFrom}
+              onChangeText={setSearchFrom}
+              placeholder="From..."
+              placeholderTextColor={Colors.textMuted}
+            />
+          </View>
+          <View style={styles.searchInput}>
+            <Ionicons name="navigate-outline" size={16} color={Colors.textMuted} />
+            <TextInput
+              style={styles.searchText}
+              value={searchTo}
+              onChangeText={setSearchTo}
+              placeholder="To..."
+              placeholderTextColor={Colors.textMuted}
+            />
+          </View>
+          <TouchableOpacity style={styles.searchButton} onPress={onSearch}>
+            <Ionicons name="search" size={18} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Trip Feed */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.accent} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={trips}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <TripCard trip={item} />}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No trips found</Text>
+              <Text style={styles.emptySubtext}>Be the first to post a trip!</Text>
+            </View>
+          }
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+  },
+  header: {
+    backgroundColor: Colors.headerDark,
+    paddingTop: 56,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  greeting: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.white,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  searchInput: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  searchText: {
+    flex: 1,
+    color: Colors.white,
+    fontSize: 14,
+  },
+  searchButton: {
+    backgroundColor: Colors.accent,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  list: {
+    paddingTop: 16,
+    paddingBottom: 80,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  empty: {
+    alignItems: 'center',
+    paddingTop: 80,
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  emptySubtext: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
 });

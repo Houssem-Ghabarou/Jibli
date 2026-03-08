@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-ItemProperty -Path ''HKLM:\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\FileSystem'' -Name ''LongPathsEnabled''\")",
+      "WebSearch",
+      "Bash(npm install)",
+      "Bash(npm install --legacy-peer-deps)",
+      "Bash(npx expo install @react-native-firebase/app @react-native-firebase/auth @react-native-firebase/firestore @react-native-firebase/storage @react-native-async-storage/async-storage react-hook-form zod date-fns)"
+    ]
+  }
+}
