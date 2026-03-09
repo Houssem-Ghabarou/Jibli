@@ -1,26 +1,27 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useFocusEffect } from 'expo-router';
+import DatePickerModal, {
+  formatDateDisplay,
+} from "@/components/DatePickerModal";
+import LocationPicker, { PickerResult } from "@/components/LocationPicker";
+import TripCard from "@/components/TripCard";
+import { Colors } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationsContext";
+import { getFlag } from "@/data/locations";
+import { getMyRequestedTripIds } from "@/lib/firestore/requests";
+import { getTrips, Trip } from "@/lib/firestore/trips";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { getTrips, Trip } from '@/lib/firestore/trips';
-import { getMyRequestedTripIds } from '@/lib/firestore/requests';
-import TripCard from '@/components/TripCard';
-import LocationPicker, { PickerResult } from '@/components/LocationPicker';
-import { getFlag } from '@/data/locations';
-import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
-import { useNotifications } from '@/context/NotificationsContext';
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface SearchLocation {
   city_name: string;
@@ -38,26 +39,41 @@ export default function HomeScreen() {
   const [cursor, setCursor] = useState<any>(null);
   const [hasMore, setHasMore] = useState(false);
 
-  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(new Set());
+  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const [fromFilter, setFromFilter] = useState<SearchLocation | null>(null);
   const [toFilter, setToFilter] = useState<SearchLocation | null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
+  const [pickerFor, setPickerFor] = useState<"from" | "to" | null>(null);
 
   // Refs so useFocusEffect always reads the latest filter values
   const fromFilterRef = useRef(fromFilter);
   const toFilterRef = useRef(toFilter);
   const dateFromRef = useRef(dateFrom);
   const dateToRef = useRef(dateTo);
-  useEffect(() => { fromFilterRef.current = fromFilter; }, [fromFilter]);
-  useEffect(() => { toFilterRef.current = toFilter; }, [toFilter]);
-  useEffect(() => { dateFromRef.current = dateFrom; }, [dateFrom]);
-  useEffect(() => { dateToRef.current = dateTo; }, [dateTo]);
+  useEffect(() => {
+    fromFilterRef.current = fromFilter;
+  }, [fromFilter]);
+  useEffect(() => {
+    toFilterRef.current = toFilter;
+  }, [toFilter]);
+  useEffect(() => {
+    dateFromRef.current = dateFrom;
+  }, [dateFrom]);
+  useEffect(() => {
+    dateToRef.current = dateTo;
+  }, [dateTo]);
 
-  async function fetchTrips(from?: string, to?: string, dFrom?: string | null, dTo?: string | null) {
+  async function fetchTrips(
+    from?: string,
+    to?: string,
+    dFrom?: string | null,
+    dTo?: string | null,
+  ) {
     try {
       const result = await getTrips({
         from,
@@ -69,7 +85,7 @@ export default function HomeScreen() {
       setCursor(result.lastDoc);
       setHasMore(result.hasMore);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to load trips');
+      Alert.alert("Error", err.message || "Failed to load trips");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -89,7 +105,7 @@ export default function HomeScreen() {
         },
         cursor,
       );
-      setTrips(prev => [...prev, ...result.data]);
+      setTrips((prev) => [...prev, ...result.data]);
       setCursor(result.lastDoc);
       setHasMore(result.hasMore);
     } finally {
@@ -108,7 +124,7 @@ export default function HomeScreen() {
       if (user) {
         getMyRequestedTripIds(user.uid).then(setRequestedTripIds);
       }
-    }, [user])
+    }, [user]),
   );
 
   function onRefresh() {
@@ -122,36 +138,55 @@ export default function HomeScreen() {
   }
 
   function handlePickerSelect(result: PickerResult) {
-    const loc: SearchLocation = 'custom' in result
-      ? { city_name: result.city, country_code: '' }
-      : { city_name: result.city, country_code: result.country_code };
+    const loc: SearchLocation =
+      "custom" in result
+        ? { city_name: result.city, country_code: "" }
+        : { city_name: result.city, country_code: result.country_code };
 
-    if (pickerFor === 'from') setFromFilter(loc);
+    if (pickerFor === "from") setFromFilter(loc);
     else setToFilter(loc);
   }
 
   const { unreadCount } = useNotifications();
-  const firstName = user?.displayName?.split(' ')[0] ?? 'there';
+  const firstName = user?.displayName?.split(" ")[0] ?? "there";
   const dateLabel = formatDateDisplay(dateFrom, dateTo);
   const hasDateFilter = dateFrom !== null;
 
-  function SearchField({ filter, placeholder, icon }: { filter: SearchLocation | null; placeholder: string; icon: string }) {
+  function SearchField({
+    filter,
+    placeholder,
+    icon,
+  }: {
+    filter: SearchLocation | null;
+    placeholder: string;
+    icon: string;
+  }) {
     const flag = filter?.country_code ? getFlag(filter.country_code) : null;
     return (
       <View style={styles.searchInput}>
-        {flag
-          ? <Text style={styles.flagSmall}>{flag}</Text>
-          : <Ionicons name={icon as any} size={16} color={Colors.textMuted} />
-        }
-        <Text style={[styles.searchText, !filter && styles.searchPlaceholder]} numberOfLines={1}>
+        {flag ? (
+          <Text style={styles.flagSmall}>{flag}</Text>
+        ) : (
+          <Ionicons name={icon as any} size={16} color={Colors.textMuted} />
+        )}
+        <Text
+          style={[styles.searchText, !filter && styles.searchPlaceholder]}
+          numberOfLines={1}
+        >
           {filter ? filter.city_name : placeholder}
         </Text>
         {filter && (
-          <TouchableOpacity onPress={() => {
-            if (placeholder === 'From...') setFromFilter(null);
-            else setToFilter(null);
-          }}>
-            <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+          <TouchableOpacity
+            onPress={() => {
+              if (placeholder === "From...") setFromFilter(null);
+              else setToFilter(null);
+            }}
+          >
+            <Ionicons
+              name="close-circle"
+              size={14}
+              color="rgba(255,255,255,0.6)"
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -164,25 +199,50 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
-            <Text style={styles.subtitle}>Find a traveler for your delivery</Text>
+            <Text style={styles.greeting}>Hello, {firstName}</Text>
+            <Text style={styles.subtitle}>
+              Find a traveler for your delivery
+            </Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.bellWrapper}>
-            <Ionicons name="notifications-outline" size={26} color={Colors.white} />
+          <TouchableOpacity
+            onPress={() => router.push("/notifications")}
+            style={styles.bellWrapper}
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={26}
+              color={Colors.white}
+            />
             {unreadCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.searchRow}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setPickerFor('from')}>
-            <SearchField filter={fromFilter} placeholder="From..." icon="location-outline" />
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setPickerFor("from")}
+          >
+            <SearchField
+              filter={fromFilter}
+              placeholder="From..."
+              icon="location-outline"
+            />
           </TouchableOpacity>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setPickerFor('to')}>
-            <SearchField filter={toFilter} placeholder="To..." icon="navigate-outline" />
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setPickerFor("to")}
+          >
+            <SearchField
+              filter={toFilter}
+              placeholder="To..."
+              icon="navigate-outline"
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.searchButton} onPress={onSearch}>
             <Ionicons name="search" size={18} color={Colors.white} />
@@ -198,9 +258,14 @@ export default function HomeScreen() {
             <Ionicons
               name="calendar-outline"
               size={14}
-              color={hasDateFilter ? Colors.accent : 'rgba(255,255,255,0.7)'}
+              color={hasDateFilter ? Colors.accent : "rgba(255,255,255,0.7)"}
             />
-            <Text style={[styles.dateChipText, hasDateFilter && styles.dateChipTextActive]}>
+            <Text
+              style={[
+                styles.dateChipText,
+                hasDateFilter && styles.dateChipTextActive,
+              ]}
+            >
               {dateLabel}
             </Text>
             {hasDateFilter && (
@@ -209,7 +274,12 @@ export default function HomeScreen() {
                   setDateFrom(null);
                   setDateTo(null);
                   setLoading(true);
-                  fetchTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
+                  fetchTrips(
+                    fromFilter?.city_name,
+                    toFilter?.city_name,
+                    null,
+                    null,
+                  );
                 }}
               >
                 <Ionicons name="close-circle" size={14} color={Colors.accent} />
@@ -227,25 +297,39 @@ export default function HomeScreen() {
       ) : (
         <FlatList
           data={trips}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TripCard
-              trip={item}
-              isRequested={requestedTripIds.has(item.id)}
-            />
+            <TripCard trip={item} isRequested={requestedTripIds.has(item.id)} />
           )}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.accent}
+            />
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator
+                color={Colors.accent}
+                style={{ marginVertical: 16 }}
+              />
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
+              <Ionicons
+                name="airplane-outline"
+                size={48}
+                color={Colors.textMuted}
+              />
               <Text style={styles.emptyText}>No trips found</Text>
-              <Text style={styles.emptySubtext}>Be the first to post a trip!</Text>
+              <Text style={styles.emptySubtext}>
+                Be the first to post a trip!
+              </Text>
             </View>
           }
         />
@@ -296,30 +380,30 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   greeting: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.white,
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     marginTop: 2,
   },
   searchRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   searchInput: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 10,
@@ -334,29 +418,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   searchPlaceholder: {
-    color: 'rgba(255,255,255,0.5)',
+    color: "rgba(255,255,255,0.5)",
   },
   searchButton: {
     backgroundColor: Colors.accent,
     width: 40,
     height: 40,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   bellWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: '#E74C3C',
+    backgroundColor: "#E74C3C",
     borderRadius: 10,
     minWidth: 18,
     height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: Colors.headerDark,
@@ -364,16 +448,16 @@ const styles = StyleSheet.create({
   badgeText: {
     color: Colors.white,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   dateRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   dateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -383,8 +467,8 @@ const styles = StyleSheet.create({
   },
   dateChipText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "600",
   },
   dateChipTextActive: {
     color: Colors.accent,
@@ -395,17 +479,17 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   empty: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 80,
     gap: 8,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
   },
   emptySubtext: {
@@ -413,4 +497,3 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
-
