@@ -12,7 +12,7 @@ function FABButton({ onPress, bottomInset }: { onPress: () => void; bottomInset:
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <Ionicons name="add" size={28} color={Colors.white} />
+      <Ionicons name="add-outline" size={32} color={Colors.white} />
     </TouchableOpacity>
   );
 }

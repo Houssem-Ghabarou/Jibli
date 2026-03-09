@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -20,10 +19,12 @@ import { getUserProfile } from '@/lib/firestore/users';
 import LocationField, { SelectedLocation } from '@/components/LocationField';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
 import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
+import { useUI } from '@/context/UIContext';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useUI();
   const [fromLocation, setFromLocation] = useState<SelectedLocation | null>(null);
   const [toLocation, setToLocation] = useState<SelectedLocation | null>(null);
   const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
@@ -44,7 +45,7 @@ export default function CreateTripScreen() {
 
   async function handleCreate() {
     if (!fromLocation || !toLocation || !date || !capacityKg.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields');
+      showToast('Please fill in all required fields', 'error');
       return;
     }
 
@@ -52,17 +53,17 @@ export default function CreateTripScreen() {
     const toCode = toLocation.country_code ?? toLocation.country;
     const involvesTunisia = fromCode === 'TN' || toCode === 'TN';
     if (!involvesTunisia) {
-      Alert.alert('Invalid Route', 'At least one end of the trip must be Tunisia. Jibli connects Tunisia with the world.');
+      showToast('At least one end of the trip must be Tunisia. Jibli connects Tunisia with the world.', 'error');
       return;
     }
     if (fromCode === toCode) {
-      Alert.alert('Invalid Route', 'From and To must be in different countries.');
+      showToast('From and To must be in different countries.', 'error');
       return;
     }
 
     const kg = parseFloat(capacityKg);
     if (isNaN(kg) || kg <= 0) {
-      Alert.alert('Invalid Capacity', 'Enter a valid capacity in kg');
+      showToast('Enter a valid capacity in kg', 'error');
       return;
     }
 
@@ -82,7 +83,7 @@ export default function CreateTripScreen() {
       });
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create trip');
+      showToast(err.message || 'Failed to create trip', 'error');
     } finally {
       setLoading(false);
     }

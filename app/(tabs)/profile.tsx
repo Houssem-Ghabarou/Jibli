@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +13,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getUserProfile, UserProfile } from '@/lib/firestore/users';
 import { logout } from '@/lib/auth';
+import { useUI } from '@/context/UIContext';
 
 function ActionRow({
   icon,
@@ -44,6 +44,7 @@ function ActionRow({
 export default function ProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast, confirm } = useUI();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,16 +57,15 @@ export default function ProfileScreen() {
   }, [user]);
 
   async function handleLogout() {
-    Alert.alert('Logout', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
+    confirm({
+      title: 'Logout',
+      message: 'Are you sure you want to sign out?',
+      dangerous: true,
+      confirmText: 'Logout',
+      onConfirm: async () => {
+        await logout();
+      }
+    });
   }
 
   if (loading) {
@@ -134,12 +134,12 @@ export default function ProfileScreen() {
         <ActionRow
           icon="notifications-outline"
           label="Notification Settings"
-          onPress={() => Alert.alert('Notification Settings', 'Coming soon')}
+          onPress={() => showToast('Coming soon', 'info')}
         />
         <ActionRow
           icon="help-circle-outline"
           label="Help & Support"
-          onPress={() => Alert.alert('Help & Support', 'Contact us at support@jibli.app')}
+          onPress={() => showToast('Contact us at support@jibli.app', 'info')}
           last
         />
       </View>

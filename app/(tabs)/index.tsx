@@ -14,7 +14,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -22,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useUI } from "@/context/UIContext";
 
 interface SearchLocation {
   city_name: string;
@@ -32,6 +32,7 @@ interface SearchLocation {
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useUI();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +86,7 @@ export default function HomeScreen() {
       setCursor(result.lastDoc);
       setHasMore(result.hasMore);
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to load trips");
+      showToast(err.message || "Failed to load trips", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -183,8 +184,8 @@ export default function HomeScreen() {
             }}
           >
             <Ionicons
-              name="close-circle"
-              size={14}
+              name="close-circle-outline"
+              size={16}
               color="rgba(255,255,255,0.6)"
             />
           </TouchableOpacity>
@@ -245,7 +246,7 @@ export default function HomeScreen() {
             />
           </TouchableOpacity>
           <TouchableOpacity style={styles.searchButton} onPress={onSearch}>
-            <Ionicons name="search" size={18} color={Colors.white} />
+            <Ionicons name="search-outline" size={20} color={Colors.white} />
           </TouchableOpacity>
         </View>
 
@@ -282,7 +283,7 @@ export default function HomeScreen() {
                   );
                 }}
               >
-                <Ionicons name="close-circle" size={14} color={Colors.accent} />
+                <Ionicons name="close-circle-outline" size={16} color={Colors.accent} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>

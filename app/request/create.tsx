@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { createRequest } from '@/lib/firestore/requests';
 import { getUserProfile } from '@/lib/firestore/users';
 import { createNotification } from '@/lib/firestore/notifications';
+import { useUI } from '@/context/UIContext';
 
 export default function CreateRequestScreen() {
   const { tripId, travelerId, travelerName } = useLocalSearchParams<{
@@ -27,6 +27,7 @@ export default function CreateRequestScreen() {
   }>();
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast, confirm } = useUI();
 
   const [itemName, setItemName] = useState('');
   const [description, setDescription] = useState('');
@@ -36,14 +37,14 @@ export default function CreateRequestScreen() {
 
   async function handleSubmit() {
     if (!itemName.trim() || !description.trim() || !weightKg.trim() || !reward.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields');
+      showToast('Please fill in all required fields', 'error');
       return;
     }
 
     const kg = parseFloat(weightKg);
     const rew = parseFloat(reward);
     if (isNaN(kg) || kg <= 0 || isNaN(rew) || rew < 0) {
-      Alert.alert('Invalid Values', 'Enter valid weight and reward values');
+      showToast('Enter valid weight and reward values', 'error');
       return;
     }
 
@@ -70,11 +71,14 @@ export default function CreateRequestScreen() {
         requestId
       );
 
-      Alert.alert('Request Sent!', 'The traveler will review your request.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      confirm({
+        title: 'Request Sent!',
+        message: 'The traveler will review your request.',
+        confirmText: 'OK',
+        onConfirm: () => router.back()
+      });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to send request');
+      showToast(err.message || 'Failed to send request', 'error');
     } finally {
       setLoading(false);
     }

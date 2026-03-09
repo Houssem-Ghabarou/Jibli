@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { getRequestById, updateRequestStatus, Request } from '@/lib/firestore/re
 import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { getUserProfile } from '@/lib/firestore/users';
 import { createNotification } from '@/lib/firestore/notifications';
+import { useUI } from '@/context/UIContext';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   pending:   { label: 'Pending',   color: Colors.warning,   bg: '#FFF8E1' },
@@ -34,6 +34,7 @@ export default function RequestDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const { showToast, confirm } = useUI();
 
   useFocusEffect(
     useCallback(() => {
@@ -72,8 +73,9 @@ export default function RequestDetailScreen() {
         request.id,
       );
       setRequest(prev => prev ? { ...prev, status: 'accepted' } : prev);
+      showToast('Request accepted successfully', 'success');
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      showToast(err.message || 'Failed to accept request', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -81,42 +83,46 @@ export default function RequestDetailScreen() {
 
   async function handleCancel() {
     if (!request) return;
-    Alert.alert('Cancel Request', 'Are you sure you want to cancel this request?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, Cancel', style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            await updateRequestStatus(request.id, 'cancelled');
-            setRequest(prev => prev ? { ...prev, status: 'cancelled' } : prev);
-          } catch (err: any) {
-            Alert.alert('Error', err.message);
-          } finally {
-            setActionLoading(false);
-          }
-        },
-      },
-    ]);
+    confirm({
+      title: 'Cancel Request',
+      message: 'Are you sure you want to cancel this request?',
+      dangerous: true,
+      confirmText: 'Yes, Cancel',
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await updateRequestStatus(request.id, 'cancelled');
+          setRequest(prev => prev ? { ...prev, status: 'cancelled' } : prev);
+          showToast('Request cancelled', 'info');
+        } catch (err: any) {
+          showToast(err.message || 'Failed to cancel', 'error');
+        } finally {
+          setActionLoading(false);
+        }
+      }
+    });
   }
 
   async function handleDecline() {
     if (!request) return;
-    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline', style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            await updateRequestStatus(request.id, 'rejected');
-            setRequest(prev => prev ? { ...prev, status: 'rejected' } : prev);
-          } finally {
-            setActionLoading(false);
-          }
-        },
-      },
-    ]);
+    confirm({
+      title: 'Decline Request',
+      message: 'Are you sure you want to decline this request?',
+      dangerous: true,
+      confirmText: 'Decline',
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await updateRequestStatus(request.id, 'rejected');
+          setRequest(prev => prev ? { ...prev, status: 'rejected' } : prev);
+          showToast('Request declined', 'info');
+        } catch (err: any) {
+          showToast(err.message || 'Failed to decline', 'error');
+        } finally {
+          setActionLoading(false);
+        }
+      }
+    });
   }
 
   if (loading) {

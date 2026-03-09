@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,9 +14,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { login } from '@/lib/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUI } from '@/context/UIContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { showToast } = useUI();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
 
@@ -46,7 +47,7 @@ export default function LoginScreen() {
           : code === 'auth/too-many-requests'
           ? 'Too many failed attempts. Try again later.'
           : err.message || 'Login failed. Please try again.';
-      Alert.alert('Login Failed', message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }

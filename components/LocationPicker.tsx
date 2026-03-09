@@ -218,7 +218,7 @@ export default function LocationPicker({ visible, onClose, onSelect }: Props) {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.searchRow}>
-            <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search city or country…"
@@ -229,7 +229,7 @@ export default function LocationPicker({ visible, onClose, onSelect }: Props) {
             />
             {query.length > 0 && (
               <TouchableOpacity onPress={() => setQuery('')}>
-                <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                <Ionicons name="close-circle-outline" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>

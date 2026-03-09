@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { getSentRequests, getReceivedRequests, updateRequestStatus, Request } fr
 import { createNotification } from '@/lib/firestore/notifications';
 import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { getUserProfile } from '@/lib/firestore/users';
+import { useUI } from '@/context/UIContext';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   Colors.warning,
@@ -165,6 +165,7 @@ function ReceivedRequestCard({
 export default function RequestsScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { confirm, showToast } = useUI();
   const [tab, setTab] = useState<'sent' | 'received'>('sent');
   const [sent, setSent] = useState<Request[]>([]);
   const [received, setReceived] = useState<Request[]>([]);
@@ -230,51 +231,54 @@ export default function RequestsScreen() {
         `Your request for "${item.itemName}" was accepted`, item.id,
       );
       setReceived(prev => prev.map(r => r.id === item.id ? { ...r, status: 'accepted' } : r));
+      showToast('Request accepted successfully', 'success');
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      showToast(err.message || 'Failed to accept request', 'error');
     } finally {
       setActionLoadingId(null);
     }
   }
 
   async function handleDecline(item: Request) {
-    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline',
-        style: 'destructive',
-        onPress: async () => {
-          setActionLoadingId(item.id);
-          try {
-            await updateRequestStatus(item.id, 'rejected');
-            setReceived(prev => prev.map(r => r.id === item.id ? { ...r, status: 'rejected' } : r));
-          } finally {
-            setActionLoadingId(null);
-          }
-        },
-      },
-    ]);
+    confirm({
+      title: 'Decline Request',
+      message: 'Are you sure you want to decline this request?',
+      dangerous: true,
+      confirmText: 'Decline',
+      onConfirm: async () => {
+        setActionLoadingId(item.id);
+        try {
+          await updateRequestStatus(item.id, 'rejected');
+          setReceived(prev => prev.map(r => r.id === item.id ? { ...r, status: 'rejected' } : r));
+          showToast('Request declined', 'info');
+        } catch (err: any) {
+          showToast(err.message || 'Failed to decline request', 'error');
+        } finally {
+          setActionLoadingId(null);
+        }
+      }
+    });
   }
 
   async function handleCancel(item: Request) {
-    Alert.alert('Cancel Request', 'Are you sure you want to cancel this request?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, Cancel',
-        style: 'destructive',
-        onPress: async () => {
-          setActionLoadingId(item.id);
-          try {
-            await updateRequestStatus(item.id, 'cancelled');
-            setSent(prev => prev.map(r => r.id === item.id ? { ...r, status: 'cancelled' } : r));
-          } catch (err: any) {
-            Alert.alert('Error', err.message);
-          } finally {
-            setActionLoadingId(null);
-          }
-        },
-      },
-    ]);
+    confirm({
+      title: 'Cancel Request',
+      message: 'Are you sure you want to cancel this request?',
+      dangerous: true,
+      confirmText: 'Yes, Cancel',
+      onConfirm: async () => {
+        setActionLoadingId(item.id);
+        try {
+          await updateRequestStatus(item.id, 'cancelled');
+          setSent(prev => prev.map(r => r.id === item.id ? { ...r, status: 'cancelled' } : r));
+          showToast('Request cancelled', 'info');
+        } catch (err: any) {
+          showToast(err.message || 'Failed to cancel', 'error');
+        } finally {
+          setActionLoadingId(null);
+        }
+      }
+    });
   }
 
   const data = tab === 'sent' ? sent : received;

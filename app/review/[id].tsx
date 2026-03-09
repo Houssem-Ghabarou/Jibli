@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +16,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { updateRequestStatus } from '@/lib/firestore/requests';
 import firestore from '@react-native-firebase/firestore';
+import { useUI } from '@/context/UIContext';
 
 export default function ReviewScreen() {
   const { id, travelerName, travelerId } = useLocalSearchParams<{
@@ -26,13 +26,14 @@ export default function ReviewScreen() {
   }>();
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useUI();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit() {
     if (rating === 0) {
-      Alert.alert('Rating Required', 'Please select a star rating');
+      showToast('Please select a star rating', 'error');
       return;
     }
     setSubmitting(true);
@@ -59,11 +60,10 @@ export default function ReviewScreen() {
         tx.update(travelerRef, { rating: newRating, reviewCount: newCount });
       });
 
-      Alert.alert('Thank you!', 'Your review has been submitted.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showToast('Your review has been submitted.', 'success');
+      router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to submit review');
+      showToast(err.message || 'Failed to submit review', 'error');
     } finally {
       setSubmitting(false);
     }

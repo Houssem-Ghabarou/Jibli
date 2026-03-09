@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
@@ -16,9 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { register } from '@/lib/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUI } from '@/context/UIContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { showToast } = useUI();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,15 +30,15 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!name.trim() || !email.trim() || !password || !confirm) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Error', 'Passwords do not match');
+      showToast('Passwords do not match', 'error');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      showToast('Password must be at least 6 characters', 'error');
       return;
     }
 
@@ -48,7 +49,7 @@ export default function RegisterScreen() {
       await AsyncStorage.setItem('@stay_connected', 'true');
       // AuthGuard will redirect to tabs
     } catch (err: any) {
-      Alert.alert('Registration Failed', err.message || 'Something went wrong');
+      showToast(err.message || 'Something went wrong', 'error');
     } finally {
       setLoading(false);
     }

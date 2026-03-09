@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -16,10 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getUserProfile, updateUserProfile } from '@/lib/firestore/users';
+import { useUI } from '@/context/UIContext';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { showToast } = useUI();
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,7 +43,7 @@ export default function EditProfileScreen() {
 
   async function handleSave() {
     if (!name.trim()) {
-      Alert.alert('Error', 'Name cannot be empty');
+      showToast('Name cannot be empty', 'error');
       return;
     }
 
@@ -54,11 +55,10 @@ export default function EditProfileScreen() {
         phone: phone.trim() || null,
         bio: bio.trim() || null,
       } as any);
-      Alert.alert('Saved', 'Profile updated successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showToast('Profile updated successfully', 'success');
+      router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update profile');
+      showToast(err.message || 'Failed to update profile', 'error');
     } finally {
       setSaving(false);
     }

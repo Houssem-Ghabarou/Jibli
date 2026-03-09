@@ -13,13 +13,13 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useUI } from "@/context/UIContext";
 
 function locDisplay(loc: TripLocation | string): {
   name: string;
@@ -36,6 +36,7 @@ export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const router = useRouter();
+  const { confirm, showToast } = useUI();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
@@ -194,19 +195,22 @@ export default function TripDetailScreen() {
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() =>
-              Alert.alert("Close Trip", "Mark this trip as closed?", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Close",
-                  style: "destructive",
-                  onPress: async () => {
+              confirm({
+                title: "Close Trip",
+                message: "Mark this trip as closed?",
+                dangerous: true,
+                onConfirm: async () => {
+                  try {
                     await closeTrip(trip.id);
                     setTrip((prev) =>
                       prev ? { ...prev, status: "closed" } : prev,
                     );
-                  },
+                    showToast("Trip closed successfully", "success");
+                  } catch (err: any) {
+                    showToast(err.message || "Failed to close trip", "error");
+                  }
                 },
-              ])
+              })
             }
           >
             <Text style={styles.closeButtonText}>Close Trip</Text>
