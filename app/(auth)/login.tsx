@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { login } from '@/lib/auth';
 
@@ -19,6 +20,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -76,14 +78,19 @@ export default function LoginScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Your password"
-            placeholderTextColor={Colors.textMuted}
-            secureTextEntry
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, styles.inputFlex]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Your password"
+              placeholderTextColor={Colors.textMuted}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(v => !v)}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -169,6 +176,27 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputFlex: {
+    flex: 1,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderRightWidth: 0,
+  },
+  eyeButton: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   link: {
     textAlign: 'center',

@@ -112,13 +112,19 @@ export function subscribeToMessages(
     .doc(conversationId)
     .collection('messages')
     .orderBy('createdAt', 'asc')
-    .onSnapshot(snapshot => {
-      const messages = snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-      callback(messages);
-    });
+    .onSnapshot(
+      snapshot => {
+        if (!snapshot || !snapshot.docs) return;
+        const messages = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Message[];
+        callback(messages);
+      },
+      error => {
+        console.warn('subscribeToMessages error:', error);
+      }
+    );
 }
 
 export function subscribeToConversations(
@@ -129,11 +135,17 @@ export function subscribeToConversations(
     .collection('conversations')
     .where('participants', 'array-contains', uid)
     .orderBy('lastMessageAt', 'desc')
-    .onSnapshot(snapshot => {
-      const conversations = snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Conversation[];
-      callback(conversations);
-    });
+    .onSnapshot(
+      snapshot => {
+        if (!snapshot || !snapshot.docs) return;
+        const conversations = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Conversation[];
+        callback(conversations);
+      },
+      error => {
+        console.warn('subscribeToConversations error:', error);
+      }
+    );
 }

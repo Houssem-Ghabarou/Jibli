@@ -28,6 +28,17 @@ export default function MessagesScreen() {
     return unsub;
   }, [user]);
 
+  function formatTime(ts: any): string {
+    if (!ts) return '';
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+    if (diffDays === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
   function renderItem({ item }: { item: Conversation }) {
     const otherUid = item.participants.find(p => p !== user?.uid) ?? '';
     const otherName = item.participantNames?.[otherUid] ?? 'Unknown';
@@ -45,17 +56,18 @@ export default function MessagesScreen() {
           </Text>
         </View>
         <View style={styles.info}>
-          <Text style={[styles.name, unread > 0 && styles.nameUnread]}>{otherName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, unread > 0 && styles.nameUnread]}>{otherName}</Text>
+            <Text style={styles.time}>{formatTime((item as any).lastMessageAt)}</Text>
+          </View>
           <Text style={[styles.lastMessage, unread > 0 && styles.lastMessageUnread]} numberOfLines={1}>
             {item.lastMessage || 'No messages yet'}
           </Text>
         </View>
-        {unread > 0 ? (
+        {unread > 0 && (
           <View style={styles.unreadBadge}>
             <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</Text>
           </View>
-        ) : (
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
         )}
       </TouchableOpacity>
     );
@@ -137,10 +149,21 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   name: {
     fontSize: 15,
     fontWeight: '700',
     color: Colors.textPrimary,
+    flex: 1,
+  },
+  time: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginLeft: 8,
   },
   lastMessage: {
     fontSize: 13,

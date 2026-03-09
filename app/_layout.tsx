@@ -46,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="orders" options={{ headerShown: false }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+        <Stack.Screen name="review/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
       </NotificationsProvider>

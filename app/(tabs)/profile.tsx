@@ -132,6 +132,20 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/edit')}
         />
         <ActionRow
+          icon="notifications-outline"
+          label="Notification Settings"
+          onPress={() => Alert.alert('Notification Settings', 'Coming soon')}
+        />
+        <ActionRow
+          icon="help-circle-outline"
+          label="Help & Support"
+          onPress={() => Alert.alert('Help & Support', 'Contact us at support@jibli.app')}
+          last
+        />
+      </View>
+
+      <View style={styles.section}>
+        <ActionRow
           icon="log-out-outline"
           label="Logout"
           onPress={handleLogout}

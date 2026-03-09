@@ -37,11 +37,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="trips"
+        name="requests"
         options={{
-          title: 'Trips',
+          title: 'Requests',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="airplane-outline" size={size} color={color} />
+            <Ionicons name="bag-outline" size={size} color={color} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="requests" options={{ href: null }} />
+      <Tabs.Screen name="trips" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -57,6 +57,12 @@ export default function ChatScreen() {
     }
   }
 
+  function formatMsgTime(ts: any): string {
+    if (!ts) return '';
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   function renderMessage({ item }: { item: Message }) {
     const isMe = item.senderId === user?.uid;
     return (
@@ -66,6 +72,9 @@ export default function ChatScreen() {
             {item.text}
           </Text>
         </View>
+        <Text style={[styles.timestamp, isMe ? styles.timestampRight : styles.timestampLeft]}>
+          {formatMsgTime((item as any).createdAt)}
+        </Text>
       </View>
     );
   }
@@ -80,7 +89,12 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{otherName}</Text>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+          </View>
+          <Text style={styles.headerTitle}>{otherName}</Text>
+        </View>
         <View style={{ width: 24 }} />
       </View>
 
@@ -144,8 +158,28 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 20,
   },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.white,
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.white,
   },
@@ -196,6 +230,18 @@ const styles = StyleSheet.create({
   },
   bubbleTextThem: {
     color: Colors.textPrimary,
+  },
+  timestamp: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+    marginHorizontal: 4,
+  },
+  timestampRight: {
+    textAlign: 'right',
+  },
+  timestampLeft: {
+    textAlign: 'left',
   },
   empty: {
     alignItems: 'center',

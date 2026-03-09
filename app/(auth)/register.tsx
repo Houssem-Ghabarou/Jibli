@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { register } from '@/lib/auth';
 
@@ -22,6 +23,8 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   async function handleRegister() {
     if (!name.trim() || !email.trim() || !password || !confirm) {
@@ -91,26 +94,36 @@ export default function RegisterScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 6 characters"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry
-            />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, styles.inputFlex]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(v => !v)}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.field}>
             <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              style={styles.input}
-              value={confirm}
-              onChangeText={setConfirm}
-              placeholder="Repeat password"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry
-            />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, styles.inputFlex]}
+                value={confirm}
+                onChangeText={setConfirm}
+                placeholder="Repeat password"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry={!showConfirm}
+              />
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirm(v => !v)}>
+                <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -201,6 +214,27 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputFlex: {
+    flex: 1,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderRightWidth: 0,
+  },
+  eyeButton: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   link: {
     textAlign: 'center',

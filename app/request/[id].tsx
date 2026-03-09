@@ -17,13 +17,13 @@ import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { getUserProfile } from '@/lib/firestore/users';
 import { createNotification } from '@/lib/firestore/notifications';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: Colors.warning,
-  accepted: Colors.success,
-  rejected: '#E74C3C',
-  bought: '#3498DB',
-  delivered: '#9B59B6',
-  completed: Colors.success,
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: 'Pending',   color: Colors.warning,   bg: '#FFF8E1' },
+  accepted:  { label: 'Accepted',  color: Colors.success,   bg: '#E8F8F0' },
+  rejected:  { label: 'Declined',  color: '#E74C3C',        bg: '#FEE8E8' },
+  bought:    { label: 'Bought',    color: '#3498DB',        bg: '#E8F4FD' },
+  delivered: { label: 'Delivered', color: '#9B59B6',        bg: '#F4ECF7' },
+  completed: { label: 'Completed', color: Colors.success,   bg: '#E8F8F0' },
 };
 
 export default function RequestDetailScreen() {
@@ -39,10 +39,10 @@ export default function RequestDetailScreen() {
     getRequestById(id).then(r => {
       setRequest(r);
       setLoading(false);
-      if (r && r.status === 'accepted') {
-        getOrCreateConversation(r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? '').then(cid => {
-          setConversationId(cid);
-        });
+      if (r && r.status !== 'pending' && r.status !== 'rejected') {
+        getOrCreateConversation(
+          r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
+        ).then(setConversationId);
       }
     });
   }, [id]);
@@ -57,20 +57,16 @@ export default function RequestDetailScreen() {
       const travelerProfile = await getUserProfile(request.travelerId);
       const travelerName = travelerProfile?.name ?? user?.displayName ?? 'Traveler';
       const cid = await getOrCreateConversation(
-        request.tripId,
-        request.id,
-        request.travelerId,
-        request.requesterId,
-        travelerName,
-        request.requesterName ?? 'Requester',
+        request.tripId, request.id,
+        request.travelerId, request.requesterId,
+        travelerName, request.requesterName ?? 'Requester',
       );
       setConversationId(cid);
       await createNotification(
-        request.requesterId,
-        'request_accepted',
+        request.requesterId, 'request_accepted',
         'Request Accepted!',
         `Your request for "${request.itemName}" was accepted`,
-        request.id
+        request.id,
       );
       setRequest(prev => prev ? { ...prev, status: 'accepted' } : prev);
     } catch (err: any) {
@@ -80,13 +76,12 @@ export default function RequestDetailScreen() {
     }
   }
 
-  async function handleReject() {
+  async function handleDecline() {
     if (!request) return;
-    Alert.alert('Reject Request', 'Are you sure you want to reject this request?', [
+    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Reject',
-        style: 'destructive',
+        text: 'Decline', style: 'destructive',
         onPress: async () => {
           setActionLoading(true);
           try {
@@ -101,22 +96,14 @@ export default function RequestDetailScreen() {
   }
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={Colors.accent} size="large" />
-      </View>
-    );
+    return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
   }
 
   if (!request) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.notFound}>Request not found</Text>
-      </View>
-    );
+    return <View style={styles.center}><Text style={styles.notFound}>Request not found</Text></View>;
   }
 
-  const statusColor = STATUS_COLORS[request.status] ?? Colors.textSecondary;
+  const statusCfg = STATUS_CONFIG[request.status] ?? STATUS_CONFIG.pending;
 
   return (
     <View style={styles.container}>
@@ -129,34 +116,33 @@ export default function RequestDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Status */}
-        <View style={[styles.statusBar, { backgroundColor: statusColor + '22' }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : ''}
-          </Text>
+
+        {/* Status badge */}
+        <View style={[styles.statusBanner, { backgroundColor: statusCfg.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusCfg.color }]} />
+          <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
         </View>
 
-        {/* Item */}
+        {/* Item card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Item</Text>
+          <Text style={styles.sectionLabel}>Item</Text>
           <Text style={styles.itemName}>{request.itemName}</Text>
           <Text style={styles.description}>{request.description}</Text>
           <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Weight</Text>
+            <View style={styles.metaChip}>
+              <Ionicons name="scale-outline" size={14} color={Colors.textSecondary} />
               <Text style={styles.metaValue}>{request.weightKg} kg</Text>
             </View>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Reward</Text>
+            <View style={styles.metaChip}>
+              <Ionicons name="cash-outline" size={14} color={Colors.textSecondary} />
               <Text style={styles.metaValue}>{request.reward} TND</Text>
             </View>
           </View>
         </View>
 
-        {/* Requester */}
+        {/* Requester card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Requester</Text>
+          <Text style={styles.sectionLabel}>Requester</Text>
           <View style={styles.personRow}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
@@ -169,56 +155,47 @@ export default function RequestDetailScreen() {
 
         {/* Actions */}
         {isTraveler && request.status === 'pending' && (
-          <View style={styles.actions}>
+          <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.rejectButton, actionLoading && styles.disabled]}
-              onPress={handleReject}
+              style={[styles.declineBtn, actionLoading && styles.disabled]}
+              onPress={handleDecline}
               disabled={actionLoading}
             >
-              <Text style={styles.rejectText}>Reject</Text>
+              <Text style={styles.declineBtnText}>Decline</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.acceptButton, actionLoading && styles.disabled]}
+              style={[styles.acceptBtn, actionLoading && styles.disabled]}
               onPress={handleAccept}
               disabled={actionLoading}
             >
-              {actionLoading ? (
-                <ActivityIndicator color={Colors.white} />
-              ) : (
-                <Text style={styles.acceptText}>Accept</Text>
-              )}
+              {actionLoading
+                ? <ActivityIndicator color={Colors.white} size="small" />
+                : <Text style={styles.acceptBtnText}>Accept</Text>
+              }
             </TouchableOpacity>
           </View>
         )}
 
-        {request.status === 'accepted' && conversationId && (
+        {/* Open chat once accepted */}
+        {conversationId && request.status !== 'rejected' && (
           <TouchableOpacity
-            style={styles.chatButton}
+            style={styles.chatBtn}
             onPress={() => router.push(`/chat/${conversationId}`)}
           >
             <Ionicons name="chatbubble-outline" size={18} color={Colors.white} />
-            <Text style={styles.chatText}>Open Chat</Text>
+            <Text style={styles.chatBtnText}>Open Chat</Text>
           </TouchableOpacity>
         )}
+
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notFound: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
+  container: { flex: 1, backgroundColor: Colors.surface },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  notFound: { fontSize: 16, color: Colors.textSecondary },
   header: {
     backgroundColor: Colors.headerDark,
     flexDirection: 'row',
@@ -228,142 +205,72 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 20,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  content: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 40,
-  },
-  statusBar: {
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.white },
+  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  statusText: { fontSize: 15, fontWeight: '700' },
   card: {
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  sectionTitle: {
-    fontSize: 12,
+  sectionLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  itemName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  description: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 24,
-    marginTop: 4,
-  },
-  metaItem: {
-    gap: 2,
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  metaValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  personRow: {
+  itemName: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
+  description: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  metaRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 6,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
   },
+  metaValue: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  personRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.white,
+  avatarText: { fontSize: 18, fontWeight: '700', color: Colors.white },
+  personName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  actionRow: { flexDirection: 'row', gap: 12 },
+  declineBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 24,
+    alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
   },
-  personName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
+  declineBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+  acceptBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 24,
+    alignItems: 'center', backgroundColor: Colors.success,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  rejectButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E74C3C',
-    paddingVertical: 14,
-    borderRadius: 24,
-    alignItems: 'center',
-  },
-  rejectText: {
-    color: '#E74C3C',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  acceptButton: {
-    flex: 1,
-    backgroundColor: Colors.success,
-    paddingVertical: 14,
-    borderRadius: 24,
-    alignItems: 'center',
-  },
-  acceptText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  chatButton: {
+  acceptBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
+  chatBtn: {
     backgroundColor: Colors.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 24,
-    marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 15, borderRadius: 24,
   },
-  chatText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  chatBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+  disabled: { opacity: 0.6 },
 });

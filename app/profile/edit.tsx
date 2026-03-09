@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -30,6 +33,8 @@ export default function EditProfileScreen() {
       if (profile) {
         setName(profile.name ?? '');
         setLocation(profile.location ?? '');
+        setPhone((profile as any).phone ?? '');
+        setBio((profile as any).bio ?? '');
       }
       setLoading(false);
     });
@@ -46,7 +51,9 @@ export default function EditProfileScreen() {
       await updateUserProfile(user!.uid, {
         name: name.trim(),
         location: location.trim() || null,
-      });
+        phone: phone.trim() || null,
+        bio: bio.trim() || null,
+      } as any);
       Alert.alert('Saved', 'Profile updated successfully', [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -78,7 +85,15 @@ export default function EditProfileScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.form}>
+      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+        {/* Avatar placeholder */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{name.charAt(0).toUpperCase() || '?'}</Text>
+          </View>
+          <Text style={styles.avatarHint}>Profile photo coming soon</Text>
+        </View>
+
         <View style={styles.field}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput
@@ -102,6 +117,32 @@ export default function EditProfileScreen() {
           />
         </View>
 
+        <View style={styles.field}>
+          <Text style={styles.label}>Phone Number (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+216 XX XXX XXX"
+            placeholderTextColor={Colors.textMuted}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Bio (optional)</Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            value={bio}
+            onChangeText={setBio}
+            placeholder="Tell requesters a bit about yourself..."
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.button, saving && styles.buttonDisabled]}
           onPress={handleSave}
@@ -113,7 +154,7 @@ export default function EditProfileScreen() {
             <Text style={styles.buttonText}>Save Changes</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -146,6 +187,29 @@ const styles = StyleSheet.create({
   form: {
     padding: 20,
     gap: 16,
+    paddingBottom: 48,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  avatarHint: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   field: {
     gap: 6,
@@ -164,6 +228,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: Colors.textPrimary,
+  },
+  textarea: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
   },
   button: {
     backgroundColor: Colors.accent,

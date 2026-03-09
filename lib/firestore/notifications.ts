@@ -92,11 +92,17 @@ export function subscribeToNotifications(
     .doc(uid)
     .collection('items')
     .where('read', '==', false)
-    .onSnapshot(snapshot => {
-      const notifications = snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notification[];
-      callback(notifications);
-    });
+    .onSnapshot(
+      snapshot => {
+        if (!snapshot || !snapshot.docs) return;
+        const notifications = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Notification[];
+        callback(notifications);
+      },
+      error => {
+        console.warn('subscribeToNotifications error:', error);
+      }
+    );
 }
