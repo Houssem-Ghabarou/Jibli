@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -19,14 +19,11 @@ import { createTrip } from '@/lib/firestore/trips';
 import { getUserProfile } from '@/lib/firestore/users';
 import LocationField, { SelectedLocation } from '@/components/LocationField';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
-import { useUserLocation } from '@/hooks/useUserLocation';
 import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { city: detectedCity } = useUserLocation();
-
   const [fromLocation, setFromLocation] = useState<SelectedLocation | null>(null);
   const [toLocation, setToLocation] = useState<SelectedLocation | null>(null);
   const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
@@ -35,17 +32,6 @@ export default function CreateTripScreen() {
   const [capacityKg, setCapacityKg] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (detectedCity && !fromLocation) {
-      setFromLocation({
-        city_id: detectedCity.id,
-        city_name: detectedCity.city,
-        country: detectedCity.country,
-        country_code: detectedCity.country_code,
-      });
-    }
-  }, [detectedCity]);
 
   function handlePickerSelect(result: PickerResult) {
     const sel: SelectedLocation = 'custom' in result
@@ -105,7 +91,7 @@ export default function CreateTripScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -208,7 +194,7 @@ export default function CreateTripScreen() {
         visible={pickerFor !== null}
         onClose={() => setPickerFor(null)}
         onSelect={handlePickerSelect}
-        userLocation={detectedCity}
+        userLocation={null}
       />
 
       <DatePickerModal

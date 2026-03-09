@@ -18,12 +18,13 @@ import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { getUserProfile } from '@/lib/firestore/users';
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: Colors.warning,
-  accepted: Colors.success,
-  rejected: '#E74C3C',
-  bought: '#3498DB',
+  pending:   Colors.warning,
+  accepted:  Colors.success,
+  rejected:  '#E74C3C',
+  bought:    '#3498DB',
   delivered: '#9B59B6',
   completed: Colors.success,
+  cancelled: Colors.textMuted,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,10 +34,22 @@ const STATUS_LABELS: Record<string, string> = {
   bought:    'In Progress',
   delivered: 'Delivered',
   completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
-function SentRequestCard({ item, onPress }: { item: Request; onPress: () => void }) {
+function SentRequestCard({
+  item,
+  onPress,
+  onCancel,
+  cancelLoading,
+}: {
+  item: Request;
+  onPress: () => void;
+  onCancel: () => void;
+  cancelLoading: boolean;
+}) {
   const color = STATUS_COLORS[item.status] ?? Colors.textSecondary;
+  const isPending = item.status === 'pending';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.cardTop}>
@@ -58,6 +71,18 @@ function SentRequestCard({ item, onPress }: { item: Request; onPress: () => void
           <Text style={styles.metaText}>{item.reward} TND</Text>
         </View>
       </View>
+      {isPending && (
+        <TouchableOpacity
+          style={[styles.cancelBtn, cancelLoading && styles.disabled]}
+          onPress={e => { e.stopPropagation?.(); onCancel(); }}
+          disabled={cancelLoading}
+        >
+          {cancelLoading
+            ? <ActivityIndicator color={Colors.textSecondary} size="small" />
+            : <Text style={styles.cancelBtnText}>Cancel Request</Text>
+          }
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
@@ -231,6 +256,27 @@ export default function RequestsScreen() {
     ]);
   }
 
+  async function handleCancel(item: Request) {
+    Alert.alert('Cancel Request', 'Are you sure you want to cancel this request?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel',
+        style: 'destructive',
+        onPress: async () => {
+          setActionLoadingId(item.id);
+          try {
+            await updateRequestStatus(item.id, 'cancelled');
+            setSent(prev => prev.map(r => r.id === item.id ? { ...r, status: 'cancelled' } : r));
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
+          } finally {
+            setActionLoadingId(null);
+          }
+        },
+      },
+    ]);
+  }
+
   const data = tab === 'sent' ? sent : received;
   const pendingReceived = received.filter(r => r.status === 'pending').length;
 
@@ -272,7 +318,12 @@ export default function RequestsScreen() {
           keyExtractor={item => item.id}
           renderItem={({ item }) =>
             tab === 'sent'
-              ? <SentRequestCard item={item} onPress={() => router.push(`/request/${item.id}`)} />
+              ? <SentRequestCard
+                  item={item}
+                  onPress={() => router.push(`/request/${item.id}`)}
+                  onCancel={() => handleCancel(item)}
+                  cancelLoading={actionLoadingId === item.id}
+                />
               : <ReceivedRequestCard
                   item={item}
                   onPress={() => router.push(`/request/${item.id}`)}
@@ -480,6 +531,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.white,
+  },
+  cancelBtn: {
+    paddingVertical: 9,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 2,
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   disabled: {
     opacity: 0.6,

@@ -18,7 +18,6 @@ import { getTrips, Trip } from '@/lib/firestore/trips';
 import { getMyRequestedTripIds } from '@/lib/firestore/requests';
 import TripCard from '@/components/TripCard';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
-import { useUserLocation } from '@/hooks/useUserLocation';
 import { getFlag } from '@/data/locations';
 import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
 import { useNotifications } from '@/context/NotificationsContext';
@@ -32,8 +31,6 @@ interface SearchLocation {
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { city: detectedCity } = useUserLocation();
-
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -258,7 +255,7 @@ export default function HomeScreen() {
         visible={pickerFor !== null}
         onClose={() => setPickerFor(null)}
         onSelect={handlePickerSelect}
-        userLocation={detectedCity}
+        userLocation={null}
       />
 
       <DatePickerModal

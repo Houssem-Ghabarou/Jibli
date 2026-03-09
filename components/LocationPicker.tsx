@@ -9,6 +9,7 @@ import {
 import BottomSheet, { BottomSheetFlatList, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { LOCATIONS, Location, getFlag, Zone } from '@/data/locations';
 import { searchLocations } from '@/utils/locationSearch';
@@ -28,7 +29,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onSelect: (location: PickerResult) => void;
-  userLocation: Location | null;
+  userLocation?: Location | null;
 }
 
 const ZONE_LABELS: Record<Zone, string> = {
@@ -65,8 +66,9 @@ type ListItem =
   | { type: 'location'; location: Location }
   | { type: 'other' };
 
-export default function LocationPicker({ visible, onClose, onSelect, userLocation }: Props) {
+export default function LocationPicker({ visible, onClose, onSelect }: Props) {
   const sheetRef = useRef<BottomSheet>(null);
+  const { top } = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [recent, setRecent] = useState<Location[]>([]);
   const [showCustom, setShowCustom] = useState(false);
@@ -104,12 +106,6 @@ export default function LocationPicker({ visible, onClose, onSelect, userLocatio
     const items: ListItem[] = [];
     const shownIds = new Set<string>();
 
-    if (userLocation) {
-      items.push({ type: 'header', label: 'Near You' });
-      items.push({ type: 'location', location: userLocation });
-      shownIds.add(userLocation.id);
-    }
-
     const filteredRecent = recent.filter(loc => !shownIds.has(loc.id));
     if (filteredRecent.length > 0) {
       items.push({ type: 'header', label: 'Recent' });
@@ -129,7 +125,7 @@ export default function LocationPicker({ visible, onClose, onSelect, userLocatio
 
     items.push({ type: 'other' });
     return items;
-  }, [query, userLocation, recent]);
+  }, [query, recent]);
 
   function handleSelect(loc: Location) {
     saveRecent(loc);
@@ -208,6 +204,7 @@ export default function LocationPicker({ visible, onClose, onSelect, userLocatio
       onClose={onClose}
       backdropComponent={renderBackdrop}
       keyboardBehavior="extend"
+      topInset={top + 8}
     >
       <BottomSheetFlatList
         data={listData}

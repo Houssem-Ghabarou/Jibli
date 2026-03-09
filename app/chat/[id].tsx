@@ -82,8 +82,7 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -110,6 +109,7 @@ export default function ChatScreen() {
           renderItem={renderMessage}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyText}>No messages yet. Say hello!</Text>

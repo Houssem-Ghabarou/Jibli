@@ -2,7 +2,7 @@ import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firest
 import storage from '@react-native-firebase/storage';
 import { Paginated } from './trips';
 
-export type RequestStatus = 'pending' | 'accepted' | 'rejected' | 'bought' | 'delivered' | 'completed';
+export type RequestStatus = 'pending' | 'accepted' | 'rejected' | 'bought' | 'delivered' | 'completed' | 'cancelled';
 
 export interface Request {
   id: string;

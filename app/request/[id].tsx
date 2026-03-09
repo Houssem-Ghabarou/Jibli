@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -35,17 +35,20 @@ export default function RequestDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  useEffect(() => {
-    getRequestById(id).then(r => {
-      setRequest(r);
-      setLoading(false);
-      if (r && r.status !== 'pending' && r.status !== 'rejected') {
-        getOrCreateConversation(
-          r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
-        ).then(setConversationId);
-      }
-    });
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      getRequestById(id).then(r => {
+        setRequest(r);
+        setLoading(false);
+        if (r && r.status !== 'pending' && r.status !== 'rejected') {
+          getOrCreateConversation(
+            r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
+          ).then(setConversationId);
+        }
+      });
+    }, [id])
+  );
 
   const isTraveler = request?.travelerId === user?.uid;
 
@@ -74,6 +77,27 @@ export default function RequestDetailScreen() {
     } finally {
       setActionLoading(false);
     }
+  }
+
+  async function handleCancel() {
+    if (!request) return;
+    Alert.alert('Cancel Request', 'Are you sure you want to cancel this request?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel', style: 'destructive',
+        onPress: async () => {
+          setActionLoading(true);
+          try {
+            await updateRequestStatus(request.id, 'cancelled');
+            setRequest(prev => prev ? { ...prev, status: 'cancelled' } : prev);
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+    ]);
   }
 
   async function handleDecline() {
@@ -176,6 +200,20 @@ export default function RequestDetailScreen() {
           </View>
         )}
 
+        {/* Cancel — requester only, pending only */}
+        {!isTraveler && request.status === 'pending' && (
+          <TouchableOpacity
+            style={[styles.cancelBtn, actionLoading && styles.disabled]}
+            onPress={handleCancel}
+            disabled={actionLoading}
+          >
+            {actionLoading
+              ? <ActivityIndicator color={Colors.textSecondary} size="small" />
+              : <Text style={styles.cancelBtnText}>Cancel Request</Text>
+            }
+          </TouchableOpacity>
+        )}
+
         {/* Open chat once accepted */}
         {conversationId && request.status !== 'rejected' && (
           <TouchableOpacity
@@ -272,5 +310,17 @@ const styles = StyleSheet.create({
     gap: 8, paddingVertical: 15, borderRadius: 24,
   },
   chatBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+  cancelBtn: {
+    paddingVertical: 14,
+    borderRadius: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
   disabled: { opacity: 0.6 },
 });
