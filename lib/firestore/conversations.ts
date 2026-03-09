@@ -13,15 +13,19 @@ export interface Conversation {
   tripId: string;
   requestId: string;
   participants: string[];
+  participantNames: Record<string, string>;
   lastMessage: string;
   lastMessageAt: any;
+  unreadCounts: Record<string, number>;
 }
 
 export async function getOrCreateConversation(
   tripId: string,
   requestId: string,
   uid1: string,
-  uid2: string
+  uid2: string,
+  name1: string,
+  name2: string,
 ): Promise<string> {
   const snapshot = await firestore()
     .collection('conversations')
@@ -36,11 +40,19 @@ export async function getOrCreateConversation(
     tripId,
     requestId,
     participants: [uid1, uid2],
+    participantNames: { [uid1]: name1, [uid2]: name2 },
     lastMessage: '',
     lastMessageAt: firestore.FieldValue.serverTimestamp(),
+    unreadCounts: { [uid1]: 0, [uid2]: 0 },
   });
 
   return ref.id;
+}
+
+export async function getConversation(id: string): Promise<Conversation | null> {
+  const doc = await firestore().collection('conversations').doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Conversation;
 }
 
 export async function getConversations(uid: string): Promise<Conversation[]> {
@@ -55,6 +67,7 @@ export async function getConversations(uid: string): Promise<Conversation[]> {
 export async function sendMessage(
   conversationId: string,
   senderId: string,
+  recipientId: string,
   text: string,
   imageUrl?: string
 ): Promise<void> {
@@ -77,9 +90,17 @@ export async function sendMessage(
   batch.update(convRef, {
     lastMessage: text,
     lastMessageAt: firestore.FieldValue.serverTimestamp(),
+    [`unreadCounts.${recipientId}`]: firestore.FieldValue.increment(1),
   });
 
   await batch.commit();
+}
+
+export async function markConversationRead(conversationId: string, uid: string): Promise<void> {
+  await firestore()
+    .collection('conversations')
+    .doc(conversationId)
+    .update({ [`unreadCounts.${uid}`]: 0 });
 }
 
 export function subscribeToMessages(

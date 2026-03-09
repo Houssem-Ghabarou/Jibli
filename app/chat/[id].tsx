@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { subscribeToMessages, sendMessage, Message } from '@/lib/firestore/conversations';
+import { subscribeToMessages, sendMessage, getConversation, markConversationRead, Message } from '@/lib/firestore/conversations';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,9 +24,19 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [otherName, setOtherName] = useState('Chat');
+  const [otherUid, setOtherUid] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    getConversation(id).then(conv => {
+      if (conv && user) {
+        const other = conv.participants.find(p => p !== user.uid) ?? '';
+        setOtherUid(other);
+        setOtherName(conv.participantNames?.[other] ?? 'Chat');
+        markConversationRead(id, user.uid);
+      }
+    });
     const unsub = subscribeToMessages(id, msgs => {
       setMessages(msgs);
       setLoading(false);
@@ -40,7 +50,7 @@ export default function ChatScreen() {
     setText('');
     setSending(true);
     try {
-      await sendMessage(id, user.uid, msg);
+      await sendMessage(id, user.uid, otherUid, msg);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } finally {
       setSending(false);
@@ -70,7 +80,7 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chat</Text>
+        <Text style={styles.headerTitle}>{otherName}</Text>
         <View style={{ width: 24 }} />
       </View>
 

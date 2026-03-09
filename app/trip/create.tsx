@@ -16,8 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { createTrip } from '@/lib/firestore/trips';
+import { getUserProfile } from '@/lib/firestore/users';
 import LocationField, { SelectedLocation } from '@/components/LocationField';
+import LocationPicker, { PickerResult } from '@/components/LocationPicker';
 import { useUserLocation } from '@/hooks/useUserLocation';
+import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
@@ -26,7 +29,9 @@ export default function CreateTripScreen() {
 
   const [fromLocation, setFromLocation] = useState<SelectedLocation | null>(null);
   const [toLocation, setToLocation] = useState<SelectedLocation | null>(null);
+  const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
   const [date, setDate] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [capacityKg, setCapacityKg] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,9 +47,30 @@ export default function CreateTripScreen() {
     }
   }, [detectedCity]);
 
+  function handlePickerSelect(result: PickerResult) {
+    const sel: SelectedLocation = 'custom' in result
+      ? { city_id: 'custom', city_name: result.city, country: result.country, country_code: '' }
+      : { city_id: result.id, city_name: result.city, country: result.country, country_code: result.country_code };
+    if (pickerFor === 'from') setFromLocation(sel);
+    else if (pickerFor === 'to') setToLocation(sel);
+    setPickerFor(null);
+  }
+
   async function handleCreate() {
-    if (!fromLocation || !toLocation || !date.trim() || !capacityKg.trim()) {
+    if (!fromLocation || !toLocation || !date || !capacityKg.trim()) {
       Alert.alert('Missing Fields', 'Please fill in all required fields');
+      return;
+    }
+
+    const fromCode = fromLocation.country_code ?? fromLocation.country;
+    const toCode = toLocation.country_code ?? toLocation.country;
+    const involvesTunisia = fromCode === 'TN' || toCode === 'TN';
+    if (!involvesTunisia) {
+      Alert.alert('Invalid Route', 'At least one end of the trip must be Tunisia. Jibli connects Tunisia with the world.');
+      return;
+    }
+    if (fromCode === toCode) {
+      Alert.alert('Invalid Route', 'From and To must be in different countries.');
       return;
     }
 
@@ -56,11 +82,12 @@ export default function CreateTripScreen() {
 
     setLoading(true);
     try {
+      const profile = await getUserProfile(user!.uid);
       await createTrip({
         travelerId: user!.uid,
-        travelerName: user!.displayName ?? 'Unknown',
-        travelerAvatar: user!.photoURL ?? null,
-        travelerRating: 0,
+        travelerName: profile?.name ?? user!.displayName ?? user!.email ?? 'Unknown',
+        travelerAvatar: profile?.avatarUrl ?? user!.photoURL ?? null,
+        travelerRating: profile?.rating ?? 0,
         from: fromLocation,
         to: toLocation,
         date: date.trim(),
@@ -94,7 +121,7 @@ export default function CreateTripScreen() {
           value={fromLocation}
           onChange={setFromLocation}
           placeholder="Departure city"
-          userLocation={detectedCity}
+          onPress={() => setPickerFor('from')}
         />
 
         <LocationField
@@ -102,18 +129,26 @@ export default function CreateTripScreen() {
           value={toLocation}
           onChange={setToLocation}
           placeholder="Destination city"
-          userLocation={detectedCity}
+          onPress={() => setPickerFor('to')}
         />
 
         <View style={styles.field}>
           <Text style={styles.label}>Departure Date *</Text>
-          <TextInput
-            style={styles.input}
-            value={date}
-            onChangeText={setDate}
-            placeholder="e.g. 2024-06-15"
-            placeholderTextColor={Colors.textMuted}
-          />
+          <TouchableOpacity
+            style={[styles.input, styles.dateInput]}
+            onPress={() => setDatePickerOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={18}
+              color={date ? Colors.textPrimary : Colors.textMuted}
+            />
+            <Text style={[styles.dateInputText, !date && styles.dateInputPlaceholder]}>
+              {date ? formatDateDisplay(date, date) : 'Select date'}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.field}>
@@ -168,6 +203,24 @@ export default function CreateTripScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <LocationPicker
+        visible={pickerFor !== null}
+        onClose={() => setPickerFor(null)}
+        onSelect={handlePickerSelect}
+        userLocation={detectedCity}
+      />
+
+      <DatePickerModal
+        visible={datePickerOpen}
+        mode="single"
+        initialFrom={date || null}
+        onConfirm={(from) => {
+          setDate(from);
+          setDatePickerOpen(false);
+        }}
+        onClose={() => setDatePickerOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -218,6 +271,19 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
     paddingTop: 12,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateInputText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  dateInputPlaceholder: {
+    color: Colors.textMuted,
   },
   guidelines: {
     backgroundColor: '#F0FFF4',

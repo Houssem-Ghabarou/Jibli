@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { NotificationsProvider } from '@/context/NotificationsContext';
 
 function AuthGuard() {
   const { user, loading } = useAuth();
@@ -32,6 +33,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
     <AuthProvider>
+      <NotificationsProvider>
       <AuthGuard />
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -46,6 +48,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
+      </NotificationsProvider>
     </AuthProvider>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>

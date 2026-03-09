@@ -12,41 +12,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeToConversations, Conversation } from '@/lib/firestore/conversations';
-import { getUserProfile, UserProfile } from '@/lib/firestore/users';
 
 export default function MessagesScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const unsub = subscribeToConversations(user.uid, async (convs) => {
+    const unsub = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
-
-      const otherUids = convs
-        .map(c => c.participants.find(p => p !== user.uid))
-        .filter(Boolean) as string[];
-
-      const uniqueUids = [...new Set(otherUids)];
-      const fetched: Record<string, UserProfile> = {};
-      await Promise.all(
-        uniqueUids.map(async uid => {
-          const profile = await getUserProfile(uid);
-          if (profile) fetched[uid] = profile;
-        })
-      );
-      setProfiles(prev => ({ ...prev, ...fetched }));
     });
     return unsub;
   }, [user]);
 
   function renderItem({ item }: { item: Conversation }) {
     const otherUid = item.participants.find(p => p !== user?.uid) ?? '';
-    const other = profiles[otherUid];
+    const otherName = item.participantNames?.[otherUid] ?? 'Unknown';
+    const unread = item.unreadCounts?.[user?.uid ?? ''] ?? 0;
 
     return (
       <TouchableOpacity
@@ -56,16 +41,22 @@ export default function MessagesScreen() {
       >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {other?.name?.charAt(0).toUpperCase() ?? '?'}
+            {otherName.charAt(0).toUpperCase()}
           </Text>
         </View>
         <View style={styles.info}>
-          <Text style={styles.name}>{other?.name ?? 'Unknown'}</Text>
-          <Text style={styles.lastMessage} numberOfLines={1}>
+          <Text style={[styles.name, unread > 0 && styles.nameUnread]}>{otherName}</Text>
+          <Text style={[styles.lastMessage, unread > 0 && styles.lastMessageUnread]} numberOfLines={1}>
             {item.lastMessage || 'No messages yet'}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        {unread > 0 ? (
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+          </View>
+        ) : (
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        )}
       </TouchableOpacity>
     );
   }
@@ -154,6 +145,28 @@ const styles = StyleSheet.create({
   lastMessage: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  nameUnread: {
+    color: Colors.textPrimary,
+    fontWeight: '800',
+  },
+  lastMessageUnread: {
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  unreadBadge: {
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    minWidth: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '700',
   },
   emptyContainer: {
     flex: 1,

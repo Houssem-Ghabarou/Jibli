@@ -14,6 +14,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getRequestById, updateRequestStatus, Request } from '@/lib/firestore/requests';
 import { getOrCreateConversation } from '@/lib/firestore/conversations';
+import { getUserProfile } from '@/lib/firestore/users';
 import { createNotification } from '@/lib/firestore/notifications';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,7 +40,7 @@ export default function RequestDetailScreen() {
       setRequest(r);
       setLoading(false);
       if (r && r.status === 'accepted') {
-        getOrCreateConversation(r.tripId, r.id, r.travelerId, r.requesterId).then(cid => {
+        getOrCreateConversation(r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? '').then(cid => {
           setConversationId(cid);
         });
       }
@@ -53,11 +54,15 @@ export default function RequestDetailScreen() {
     setActionLoading(true);
     try {
       await updateRequestStatus(request.id, 'accepted');
+      const travelerProfile = await getUserProfile(request.travelerId);
+      const travelerName = travelerProfile?.name ?? user?.displayName ?? 'Traveler';
       const cid = await getOrCreateConversation(
         request.tripId,
         request.id,
         request.travelerId,
-        request.requesterId
+        request.requesterId,
+        travelerName,
+        request.requesterName ?? 'Requester',
       );
       setConversationId(cid);
       await createNotification(

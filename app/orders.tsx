@@ -27,14 +27,32 @@ export default function OrdersScreen() {
   const router = useRouter();
   const [orders, setOrders] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    getSentRequests(user.uid).then(data => {
-      setOrders(data);
+    getSentRequests(user.uid).then(result => {
+      setOrders(result.data);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
       setLoading(false);
     });
   }, [user]);
+
+  async function loadMore() {
+    if (!user || !hasMore || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const result = await getSentRequests(user.uid, cursor);
+      setOrders(prev => [...prev, ...result.data]);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function renderItem({ item }: { item: Request }) {
     const color = STATUS_COLORS[item.status] ?? Colors.textSecondary;
@@ -83,6 +101,9 @@ export default function OrdersScreen() {
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="receipt-outline" size={48} color={Colors.textMuted} />

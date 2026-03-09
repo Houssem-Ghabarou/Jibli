@@ -5,11 +5,8 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetFlatList, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/theme';
@@ -105,19 +102,25 @@ export default function LocationPicker({ visible, onClose, onSelect, userLocatio
     }
 
     const items: ListItem[] = [];
+    const shownIds = new Set<string>();
 
     if (userLocation) {
       items.push({ type: 'header', label: 'Near You' });
       items.push({ type: 'location', location: userLocation });
+      shownIds.add(userLocation.id);
     }
 
-    if (recent.length > 0) {
+    const filteredRecent = recent.filter(loc => !shownIds.has(loc.id));
+    if (filteredRecent.length > 0) {
       items.push({ type: 'header', label: 'Recent' });
-      recent.forEach(loc => items.push({ type: 'location', location: loc }));
+      filteredRecent.forEach(loc => {
+        items.push({ type: 'location', location: loc });
+        shownIds.add(loc.id);
+      });
     }
 
     for (const zone of ZONE_ORDER) {
-      const zoneLocations = LOCATIONS.filter(l => l.zone === zone);
+      const zoneLocations = LOCATIONS.filter(l => l.zone === zone && !shownIds.has(l.id));
       if (zoneLocations.length > 0) {
         items.push({ type: 'header', label: ZONE_LABELS[zone] });
         zoneLocations.forEach(loc => items.push({ type: 'location', location: loc }));
@@ -206,44 +209,41 @@ export default function LocationPicker({ visible, onClose, onSelect, userLocatio
       backdropComponent={renderBackdrop}
       keyboardBehavior="extend"
     >
-      <BottomSheetView style={styles.container}>
-        <View style={styles.searchRow}>
-          <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search city or country…"
-            placeholderTextColor={Colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <FlatList
-          data={listData}
-          keyExtractor={(item, idx) => {
-            if (item.type === 'header') return `h-${item.label}`;
-            if (item.type === 'other') return 'other';
-            return item.location.id;
-          }}
-          renderItem={renderItem}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.list}
-        />
-      </BottomSheetView>
+      <BottomSheetFlatList
+        data={listData}
+        keyExtractor={(item, idx) => {
+          if (item.type === 'header') return `h-${item.label}`;
+          if (item.type === 'other') return 'other';
+          return item.location.id;
+        }}
+        renderItem={renderItem}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <View style={styles.searchRow}>
+            <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search city or country…"
+              placeholderTextColor={Colors.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')}>
+                <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        }
+        stickyHeaderIndices={[0]}
+      />
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

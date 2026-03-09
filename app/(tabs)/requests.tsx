@@ -50,6 +50,11 @@ export default function RequestsScreen() {
   const [sent, setSent] = useState<Request[]>([]);
   const [received, setReceived] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sentCursor, setSentCursor] = useState<any>(null);
+  const [receivedCursor, setReceivedCursor] = useState<any>(null);
+  const [sentHasMore, setSentHasMore] = useState(false);
+  const [receivedHasMore, setReceivedHasMore] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -58,11 +63,36 @@ export default function RequestsScreen() {
       getSentRequests(user.uid),
       getReceivedRequests(user.uid),
     ]).then(([s, r]) => {
-      setSent(s);
-      setReceived(r);
+      setSent(s.data);
+      setSentCursor(s.lastDoc);
+      setSentHasMore(s.hasMore);
+      setReceived(r.data);
+      setReceivedCursor(r.lastDoc);
+      setReceivedHasMore(r.hasMore);
       setLoading(false);
     });
   }, [user]);
+
+  async function loadMore() {
+    if (!user || loadingMore) return;
+    if (tab === 'sent' && sentHasMore && sentCursor) {
+      setLoadingMore(true);
+      try {
+        const result = await getSentRequests(user.uid, sentCursor);
+        setSent(prev => [...prev, ...result.data]);
+        setSentCursor(result.lastDoc);
+        setSentHasMore(result.hasMore);
+      } finally { setLoadingMore(false); }
+    } else if (tab === 'received' && receivedHasMore && receivedCursor) {
+      setLoadingMore(true);
+      try {
+        const result = await getReceivedRequests(user.uid, receivedCursor);
+        setReceived(prev => [...prev, ...result.data]);
+        setReceivedCursor(result.lastDoc);
+        setReceivedHasMore(result.hasMore);
+      } finally { setLoadingMore(false); }
+    }
+  }
 
   const data = tab === 'sent' ? sent : received;
   const pendingReceived = received.filter(r => r.status === 'pending').length;
@@ -110,6 +140,9 @@ export default function RequestsScreen() {
             />
           )}
           contentContainerStyle={styles.list}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />

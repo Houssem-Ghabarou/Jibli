@@ -2,6 +2,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { useNotifications } from '@/context/NotificationsContext';
 
 function FABButton({ onPress }: { onPress: () => void }) {
   return (
@@ -13,6 +14,7 @@ function FABButton({ onPress }: { onPress: () => void }) {
 
 export default function TabsLayout() {
   const router = useRouter();
+  const { unreadMessages } = useNotifications();
 
   return (
     <Tabs
@@ -59,6 +61,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
+          tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#E74C3C', fontSize: 10 },
         }}
       />
       <Tabs.Screen

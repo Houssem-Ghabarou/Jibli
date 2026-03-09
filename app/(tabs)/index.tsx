@@ -15,16 +15,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getTrips, Trip } from '@/lib/firestore/trips';
+import { getMyRequestedTripIds } from '@/lib/firestore/requests';
 import TripCard from '@/components/TripCard';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { getFlag } from '@/data/locations';
+import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
+import { useNotifications } from '@/context/NotificationsContext';
 
 interface SearchLocation {
   city_name: string;
   country_code: string;
 }
 
+// ─── Main screen ─────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -33,15 +37,30 @@ export default function HomeScreen() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(false);
+
+  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(new Set());
 
   const [fromFilter, setFromFilter] = useState<SearchLocation | null>(null);
   const [toFilter, setToFilter] = useState<SearchLocation | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
 
-  async function fetchTrips(from?: string, to?: string) {
+  async function fetchTrips(from?: string, to?: string, dFrom?: string | null, dTo?: string | null) {
     try {
-      const data = await getTrips({ from, to });
-      setTrips(data);
+      const result = await getTrips({
+        from,
+        to,
+        dateFrom: dFrom ?? undefined,
+        dateTo: dTo ?? undefined,
+      });
+      setTrips(result.data);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to load trips');
     } finally {
@@ -50,20 +69,44 @@ export default function HomeScreen() {
     }
   }
 
+  async function loadMore() {
+    if (!hasMore || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const result = await getTrips(
+        {
+          from: fromFilter?.city_name,
+          to: toFilter?.city_name,
+          dateFrom: dateFrom ?? undefined,
+          dateTo: dateTo ?? undefined,
+        },
+        cursor,
+      );
+      setTrips(prev => [...prev, ...result.data]);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
-      fetchTrips(fromFilter?.city_name, toFilter?.city_name);
-    }, [])
+      fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+      if (user) {
+        getMyRequestedTripIds(user.uid).then(setRequestedTripIds);
+      }
+    }, [user])
   );
 
   function onRefresh() {
     setRefreshing(true);
-    fetchTrips(fromFilter?.city_name, toFilter?.city_name);
+    fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
   }
 
   function onSearch() {
     setLoading(true);
-    fetchTrips(fromFilter?.city_name, toFilter?.city_name);
+    fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
   }
 
   function handlePickerSelect(result: PickerResult) {
@@ -75,7 +118,10 @@ export default function HomeScreen() {
     else setToFilter(loc);
   }
 
+  const { unreadCount } = useNotifications();
   const firstName = user?.displayName?.split(' ')[0] ?? 'there';
+  const dateLabel = formatDateDisplay(dateFrom, dateTo);
+  const hasDateFilter = dateFrom !== null;
 
   function SearchField({ filter, placeholder, icon }: { filter: SearchLocation | null; placeholder: string; icon: string }) {
     const flag = filter?.country_code ? getFlag(filter.country_code) : null;
@@ -109,8 +155,13 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
             <Text style={styles.subtitle}>Find a traveler for your delivery</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/notifications')}>
+          <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.bellWrapper}>
             <Ionicons name="notifications-outline" size={26} color={Colors.white} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -125,6 +176,35 @@ export default function HomeScreen() {
             <Ionicons name="search" size={18} color={Colors.white} />
           </TouchableOpacity>
         </View>
+
+        {/* Date filter row */}
+        <View style={styles.dateRow}>
+          <TouchableOpacity
+            style={[styles.dateChip, hasDateFilter && styles.dateChipActive]}
+            onPress={() => setDatePickerOpen(true)}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={14}
+              color={hasDateFilter ? Colors.accent : 'rgba(255,255,255,0.7)'}
+            />
+            <Text style={[styles.dateChipText, hasDateFilter && styles.dateChipTextActive]}>
+              {dateLabel}
+            </Text>
+            {hasDateFilter && (
+              <TouchableOpacity
+                onPress={() => {
+                  setDateFrom(null);
+                  setDateTo(null);
+                  setLoading(true);
+                  fetchTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
+                }}
+              >
+                <Ionicons name="close-circle" size={14} color={Colors.accent} />
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Trip Feed */}
@@ -136,11 +216,19 @@ export default function HomeScreen() {
         <FlatList
           data={trips}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <TripCard trip={item} />}
+          renderItem={({ item }) => (
+            <TripCard
+              trip={item}
+              isRequested={requestedTripIds.has(item.id)}
+            />
+          )}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
           }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
@@ -157,6 +245,28 @@ export default function HomeScreen() {
         onSelect={handlePickerSelect}
         userLocation={detectedCity}
       />
+
+      <DatePickerModal
+        visible={datePickerOpen}
+        mode="range"
+        initialFrom={dateFrom}
+        initialTo={dateTo}
+        onConfirm={(from, to) => {
+          setDateFrom(from);
+          setDateTo(to);
+          setDatePickerOpen(false);
+          setLoading(true);
+          fetchTrips(fromFilter?.city_name, toFilter?.city_name, from, to);
+        }}
+        onClear={() => {
+          setDateFrom(null);
+          setDateTo(null);
+          setDatePickerOpen(false);
+          setLoading(true);
+          fetchTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
+        }}
+        onClose={() => setDatePickerOpen(false)}
+      />
     </View>
   );
 }
@@ -169,9 +279,9 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.headerDark,
     paddingTop: 56,
-    paddingBottom: 24,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 12,
   },
   headerTop: {
     flexDirection: 'row',
@@ -222,6 +332,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bellWrapper: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#E74C3C',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.headerDark,
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  dateRow: {
+    flexDirection: 'row',
+  },
+  dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  dateChipActive: {
+    backgroundColor: Colors.white,
+  },
+  dateChipText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+  },
+  dateChipTextActive: {
+    color: Colors.accent,
+  },
   list: {
     paddingTop: 16,
     paddingBottom: 80,
@@ -246,3 +401,4 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+

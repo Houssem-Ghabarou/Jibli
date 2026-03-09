@@ -18,9 +18,10 @@ function locArea(loc: Trip['from']): string | undefined {
 
 interface Props {
   trip: Trip;
+  isRequested?: boolean;
 }
 
-export default function TripCard({ trip }: Props) {
+export default function TripCard({ trip, isRequested }: Props) {
   const router = useRouter();
 
   return (
@@ -47,6 +48,11 @@ export default function TripCard({ trip }: Props) {
             {trip.status === 'open' ? 'Open' : 'Closed'}
           </Text>
         </View>
+        {isRequested && (
+          <View style={styles.requestedBadge}>
+            <Text style={styles.requestedText}>✓ Requested</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.routeRow}>
@@ -215,5 +221,16 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  requestedBadge: {
+    backgroundColor: '#E8F8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  requestedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.success,
   },
 });

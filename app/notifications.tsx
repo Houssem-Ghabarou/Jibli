@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getNotifications, markAsRead, Notification } from '@/lib/firestore/notifications';
+import { getNotifications, markAsRead, markAllAsRead, Notification } from '@/lib/firestore/notifications';
 
 const TYPE_ICONS: Record<string, string> = {
   new_request: 'bag-outline',
@@ -25,14 +25,41 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    getNotifications(user.uid).then(n => {
-      setNotifications(n);
+    getNotifications(user.uid).then(result => {
+      setNotifications(result.data);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
       setLoading(false);
     });
   }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      markAllAsRead(user.uid).then(() => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      });
+    }, [user]),
+  );
+
+  async function loadMore() {
+    if (!user || !hasMore || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const result = await getNotifications(user.uid, cursor);
+      setNotifications(prev => [...prev, ...result.data]);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function handlePress(item: Notification) {
     if (!user) return;
@@ -92,6 +119,9 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={item => item.id}
           renderItem={renderItem}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="notifications-outline" size={48} color={Colors.textMuted} />

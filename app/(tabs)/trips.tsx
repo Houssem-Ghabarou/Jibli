@@ -21,15 +21,33 @@ export default function TripsScreen() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(false);
 
   async function fetchTrips() {
     if (!user) return;
     try {
-      const data = await getTripsByUser(user.uid);
-      setTrips(data);
+      const result = await getTripsByUser(user.uid);
+      setTrips(result.data);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  }
+
+  async function loadMore() {
+    if (!user || !hasMore || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const result = await getTripsByUser(user.uid, cursor);
+      setTrips(prev => [...prev, ...result.data]);
+      setCursor(result.lastDoc);
+      setHasMore(result.hasMore);
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -64,6 +82,9 @@ export default function TripsScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
           }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
