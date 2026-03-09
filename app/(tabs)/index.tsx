@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   View,
@@ -50,6 +50,16 @@ export default function HomeScreen() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
 
+  // Refs so useFocusEffect always reads the latest filter values
+  const fromFilterRef = useRef(fromFilter);
+  const toFilterRef = useRef(toFilter);
+  const dateFromRef = useRef(dateFrom);
+  const dateToRef = useRef(dateTo);
+  useEffect(() => { fromFilterRef.current = fromFilter; }, [fromFilter]);
+  useEffect(() => { toFilterRef.current = toFilter; }, [toFilter]);
+  useEffect(() => { dateFromRef.current = dateFrom; }, [dateFrom]);
+  useEffect(() => { dateToRef.current = dateTo; }, [dateTo]);
+
   async function fetchTrips(from?: string, to?: string, dFrom?: string | null, dTo?: string | null) {
     try {
       const result = await getTrips({
@@ -92,7 +102,12 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+      fetchTrips(
+        fromFilterRef.current?.city_name,
+        toFilterRef.current?.city_name,
+        dateFromRef.current,
+        dateToRef.current,
+      );
       if (user) {
         getMyRequestedTripIds(user.uid).then(setRequestedTripIds);
       }

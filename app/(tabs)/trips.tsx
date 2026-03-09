@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -51,9 +51,11 @@ export default function TripsScreen() {
     }
   }
 
-  useEffect(() => {
-    fetchTrips();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTrips();
+    }, [user])
+  );
 
   function onRefresh() {
     setRefreshing(true);
