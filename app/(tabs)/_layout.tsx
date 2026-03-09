@@ -1,19 +1,21 @@
 import { Tabs, useRouter } from 'expo-router';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useNotifications } from '@/context/NotificationsContext';
 
-function FABButton({ onPress, bottomInset }: { onPress: () => void; bottomInset: number }) {
+function FABButton({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity
-      style={[styles.fab, { marginBottom: bottomInset + 10 }]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <Ionicons name="add-outline" size={32} color={Colors.white} />
-    </TouchableOpacity>
+    <View style={styles.fabWrapper}>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={onPress}
+        activeOpacity={0.9}
+      >
+        <Ionicons name="add" size={36} color={Colors.white} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -65,7 +67,6 @@ export default function TabsLayout() {
           tabBarButton: () => (
             <FABButton
               onPress={() => router.push('/trip/create')}
-              bottomInset={bottom}
             />
           ),
         }}
@@ -100,17 +101,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  fabWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    top: -24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+    borderWidth: 4,
+    borderColor: Colors.white,
   },
 });

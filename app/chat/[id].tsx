@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeToMessages, sendMessage, getConversation, markConversationRead, Message } from '@/lib/firestore/conversations';
@@ -27,6 +28,7 @@ export default function ChatScreen() {
   const [otherName, setOtherName] = useState('Chat');
   const [otherUid, setOtherUid] = useState('');
   const flatListRef = useRef<FlatList>(null);
+  const { bottom } = useSafeAreaInsets();
 
   useEffect(() => {
     getConversation(id).then(conv => {
@@ -88,13 +90,12 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <View style={styles.headerLeft}>
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.headerTitle}>{otherName}</Text>
         </View>
-        <View style={{ width: 24 }} />
       </View>
 
       {loading ? (
@@ -118,7 +119,7 @@ export default function ChatScreen() {
         />
       )}
 
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: Math.max(bottom, 12) }]}>
         <TextInput
           style={styles.input}
           value={text}
@@ -157,13 +158,13 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 16,
     paddingHorizontal: 20,
+    gap: 16,
   },
-  headerCenter: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flex: 1,
-    justifyContent: 'center',
   },
   headerAvatar: {
     width: 36,
