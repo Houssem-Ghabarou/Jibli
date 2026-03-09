@@ -1,4 +1,4 @@
-# Jibli — App State (as of March 2026)
+# Jibli — App State (as of March 9, 2026)
 
 ## Legend
 - ✅ Done & working
@@ -24,11 +24,13 @@
 
 | Feature | Status | Notes |
 |---|---|---|
-| Bottom tab bar (5 tabs) | ✅ | Home, Trips, Requests, Messages, Profile |
-| Requests tab visible | ✅ | Fixed — was hidden, now shows with bag icon |
+| Bottom tab bar (5 tabs) | ✅ | Home, Requests, +FAB, Messages, Profile — Trips hidden |
+| Requests tab visible | ✅ | receipt-outline icon, replaces Trips in bar |
 | Tab badges (unread messages) | ✅ | Red badge on Messages tab |
 | Tab badges (pending requests) | ✅ | Red badge on Received tab inside Requests |
-| "Post Trip" FAB | ⚠️ | Removed from tab bar — accessible via Trips tab header add button only |
+| "Post Trip" FAB (center) | ✅ | Restored as center FAB — opens /trip/create |
+| Safe area / gesture nav | ✅ | useSafeAreaInsets — bar height = 60 + bottom inset |
+| Professional icons (filled/outline active state) | ✅ | home, receipt, chatbubbles, person-circle |
 
 ---
 
@@ -102,9 +104,9 @@
 
 | Feature | Status | Notes |
 |---|---|---|
-| Full-height bottom sheet | ✅ | Uses @gorhom/bottom-sheet |
+| Full-height bottom sheet | ✅ | Uses @gorhom/bottom-sheet, topInset for system UI |
 | Search bar (filter as you type) | ✅ | |
-| "Near you" GPS section | ✅ | Uses expo-location |
+| "Near you" GPS section | — | Removed — GPS permission requests eliminated |
 | Recent selections | ✅ | Stored in AsyncStorage |
 | Tunisia cities grouped by governorate | ✅ | From data/locations |
 | International countries with flags | ✅ | France, Germany, Belgium, Canada, Italy… |
@@ -123,6 +125,7 @@
 | Received request cards (avatar, name, item, weight, reward) | ✅ | |
 | Inline Accept / Decline on received cards | ✅ | Accept → green, Decline → gray |
 | Accept creates conversation + notification | ✅ | |
+| Cancel sent request (pending only) | ✅ | Confirmation alert → sets status to 'cancelled' |
 | Pagination | ✅ | |
 | Empty state with helpful text | ✅ | |
 | Traveler name on sent cards | ⚠️ | Not shown — only item name, not "via [traveler]" |
@@ -156,7 +159,9 @@
 | Item photo display | ❌ | photoUrl stored but not rendered |
 | Requester card (avatar, name) | ✅ | |
 | Accept / Decline buttons (traveler, pending) | ✅ | |
+| Cancel button (requester, pending only) | ✅ | Confirmation alert → sets status to 'cancelled' |
 | Open Chat button (once accepted) | ✅ | Auto-creates conversation |
+| Re-fetches on screen focus | ✅ | useFocusEffect — always up to date |
 | Intermediate status steps (bought/delivered/completed) | — | Removed by design — users coordinate via DM |
 
 ---
@@ -192,7 +197,7 @@
 | Real-time messages | ✅ | Firestore onSnapshot |
 | Mark conversation as read on open | ✅ | |
 | Auto-scroll to bottom | ✅ | |
-| Keyboard avoiding | ✅ | |
+| Keyboard avoiding | ✅ | behavior='height' on Android, 'padding' on iOS — input no longer hidden |
 
 ---
 
@@ -295,6 +300,15 @@
 3. **Notification timestamps** — notifications list shows no timestamp on each row
 4. **Trips posted stat** on Profile — only shows deliveries + rating, missing trips count
 5. **Leave Review navigation bug** — the URL params for `travelerName` in `request/[id].tsx` uses `requesterName` by mistake — needs to use the trip's traveler name
+
+### Fixed This Session
+- ✅ Keyboard hiding input on Android in Chat, Create Trip, Create Request screens
+- ✅ LocationPicker `topInset` — no longer bleeds into system UI on iPhone/Android
+- ✅ Tab bar safe area — no longer hidden under Android gesture navigation bar
+- ✅ Tab bar FAB re-centered with proper bottom inset offset
+- ✅ Tab icons upgraded (filled/outline active states, professional icon set)
+- ✅ Cancel sent request — available on Requests screen (Sent tab) and Request Details
+- ✅ Request Details screen re-fetches on every focus (useFocusEffect)
 
 ### Medium Priority
 6. **Currency selector** on Create Request — always TND, no €/$/£ option
