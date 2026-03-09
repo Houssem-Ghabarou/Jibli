@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { subscribeToAuthState, User } from '@/lib/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { subscribeToAuthState, User, logout } from '@/lib/auth';
 
 interface AuthContextValue {
   user: User | null;
@@ -13,11 +14,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthState(u => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsubscribe;
+    let unsubscribe: (() => void) | undefined;
+
+    async function initAuth() {
+      try {
+        const stayConnected = await AsyncStorage.getItem('@stay_connected');
+        if (stayConnected === 'false') {
+          await logout();
+        }
+      } catch (e) {
+        console.warn('Stay connected check failed:', e);
+      }
+      
+      unsubscribe = subscribeToAuthState(u => {
+        setUser(u);
+        setLoading(false);
+      });
+    }
+
+    initAuth();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   return (

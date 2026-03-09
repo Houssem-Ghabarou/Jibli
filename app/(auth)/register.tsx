@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { register } from '@/lib/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -43,6 +44,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register(name.trim(), email.trim(), password);
+      // Ensure the new user stays connected by default
+      await AsyncStorage.setItem('@stay_connected', 'true');
       // AuthGuard will redirect to tabs
     } catch (err: any) {
       Alert.alert('Registration Failed', err.message || 'Something went wrong');

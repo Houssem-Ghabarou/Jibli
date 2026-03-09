@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { login } from '@/lib/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [stayConnected, setStayConnected] = useState(true);
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -31,6 +33,8 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // Save stay connected preference
+      await AsyncStorage.setItem('@stay_connected', stayConnected ? 'true' : 'false');
       // AuthGuard will redirect to tabs
     } catch (err: any) {
       const code = err?.code ?? '';
@@ -92,6 +96,17 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        <TouchableOpacity 
+          style={styles.checkboxContainer} 
+          onPress={() => setStayConnected(!stayConnected)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, stayConnected && styles.checkboxChecked]}>
+            {stayConnected && <Ionicons name="checkmark" size={16} color={Colors.white} />}
+          </View>
+          <Text style={styles.checkboxLabel}>Stay connected</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -168,6 +183,29 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     marginTop: 8,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   buttonDisabled: {
     opacity: 0.6,
