@@ -1,13 +1,18 @@
 import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useNotifications } from '@/context/NotificationsContext';
 
-function FABButton({ onPress }: { onPress: () => void }) {
+function FABButton({ onPress, bottomInset }: { onPress: () => void; bottomInset: number }) {
   return (
-    <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.85}>
-      <Ionicons name="add" size={32} color={Colors.white} />
+    <TouchableOpacity
+      style={[styles.fab, { marginBottom: bottomInset + 10 }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <Ionicons name="add" size={28} color={Colors.white} />
     </TouchableOpacity>
   );
 }
@@ -15,6 +20,7 @@ function FABButton({ onPress }: { onPress: () => void }) {
 export default function TabsLayout() {
   const router = useRouter();
   const { unreadMessages } = useNotifications();
+  const { bottom } = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -22,7 +28,14 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          backgroundColor: Colors.white,
+          borderTopColor: Colors.border,
+          borderTopWidth: 1,
+          height: 60 + bottom,
+          paddingBottom: bottom || 8,
+          paddingTop: 8,
+        },
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.label,
       }}
@@ -31,8 +44,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -40,8 +53,8 @@ export default function TabsLayout() {
         name="requests"
         options={{
           title: 'Requests',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bag-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -50,7 +63,10 @@ export default function TabsLayout() {
         options={{
           title: '',
           tabBarButton: () => (
-            <FABButton onPress={() => router.push('/trip/create')} />
+            <FABButton
+              onPress={() => router.push('/trip/create')}
+              bottomInset={bottom}
+            />
           ),
         }}
       />
@@ -58,8 +74,8 @@ export default function TabsLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={24} color={color} />
           ),
           tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
           tabBarBadgeStyle: { backgroundColor: '#E74C3C', fontSize: 10 },
@@ -69,8 +85,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -80,25 +96,17 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: Colors.white,
-    borderTopColor: Colors.border,
-    borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
-  },
   label: {
     fontSize: 11,
     fontWeight: '600',
   },
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
     shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
