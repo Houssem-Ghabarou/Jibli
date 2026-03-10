@@ -1,12 +1,15 @@
+import { uploadFileToCloudinary } from '@/cloudinary/CloudinaryHelper';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useUI } from '@/context/UIContext';
 import { getUserProfile, updateUserProfile } from '@/lib/firestore/users';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,7 +17,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 export default function EditProfileScreen() {
@@ -25,6 +28,7 @@ export default function EditProfileScreen() {
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +40,7 @@ export default function EditProfileScreen() {
         setLocation(profile.location ?? '');
         setPhone((profile as any).phone ?? '');
         setBio((profile as any).bio ?? '');
+        setAvatarUri(profile.avatarUrl ?? null);
       }
       setLoading(false);
     });
@@ -49,11 +54,25 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
+      let finalAvatarUrl = avatarUri;
+
+      // If the avatarUri is a local file (not already an http url uploaded), upload it to cloudinary
+      if (avatarUri && !avatarUri.startsWith('http') && user) {
+        try {
+          finalAvatarUrl = await uploadFileToCloudinary(avatarUri, 'avatars', `avatar_${user.uid}`);
+        } catch (uploadError: any) {
+          showToast(`Failed to upload photo: ${uploadError.message}`, 'error');
+          setSaving(false);
+          return;
+        }
+      }
+
       await updateUserProfile(user!.uid, {
         name: name.trim(),
         location: location.trim() || null,
         phone: phone.trim() || null,
         bio: bio.trim() || null,
+        avatarUrl: finalAvatarUrl,
       } as any);
       showToast('Profile updated successfully', 'success');
       router.back();
@@ -61,6 +80,23 @@ export default function EditProfileScreen() {
       showToast(err.message || 'Failed to update profile', 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pickImage() {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      showToast('Error selecting image', 'error');
     }
   }
 
@@ -86,12 +122,19 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-        {/* Avatar placeholder */}
+        {/* Avatar Section */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{name.charAt(0).toUpperCase() || '?'}</Text>
-          </View>
-          <Text style={styles.avatarHint}>Profile photo coming soon</Text>
+          <TouchableOpacity style={styles.avatar} onPress={pickImage} activeOpacity={0.8}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{name.charAt(0).toUpperCase() || '?'}</Text>
+            )}
+            <View style={styles.editIconBadge}>
+              <Ionicons name="camera" size={16} color={Colors.white} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.avatarHint}>Tap to change photo</Text>
         </View>
 
         <View style={styles.field}>
@@ -206,6 +249,24 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: Colors.white,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 44,
+  },
+  editIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.textPrimary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
   },
   avatarHint: {
     fontSize: 13,
