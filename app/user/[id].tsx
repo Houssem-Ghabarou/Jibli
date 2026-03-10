@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     Linking,
     ScrollView,
     StyleSheet,
@@ -75,9 +76,13 @@ export default function PublicProfileScreen() {
                 {/* Avatar Section */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {profile.name?.charAt(0).toUpperCase() ?? '?'}
-                        </Text>
+                        {profile.avatarUrl ? (
+                            <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>
+                                {profile.name?.charAt(0).toUpperCase() ?? '?'}
+                            </Text>
+                        )}
                     </View>
                     <Text style={styles.name}>{profile.name}</Text>
                     {profile.location && (
@@ -182,6 +187,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 8,
+    },
+    avatarImage: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
     },
     avatarText: {
         fontSize: 40,

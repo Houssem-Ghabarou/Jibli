@@ -6,24 +6,37 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeToConversations, Conversation } from '@/lib/firestore/conversations';
+import { getUserProfile } from '@/lib/firestore/users';
 
 export default function MessagesScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [avatars, setAvatars] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     if (!user) return;
     const unsub = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
+      // Fetch avatars for other participants
+      const uids = convs.map(c => c.participants.find(p => p !== user.uid) ?? '').filter(Boolean);
+      const newUids = uids.filter(uid => !(uid in avatars));
+      if (newUids.length > 0) {
+        Promise.all(newUids.map(uid => getUserProfile(uid))).then(profiles => {
+          const updates: Record<string, string | null> = {};
+          newUids.forEach((uid, i) => { updates[uid] = profiles[i]?.avatarUrl ?? null; });
+          setAvatars(prev => ({ ...prev, ...updates }));
+        });
+      }
     });
     return unsub;
   }, [user]);
@@ -51,9 +64,13 @@ export default function MessagesScreen() {
         activeOpacity={0.8}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {otherName.charAt(0).toUpperCase()}
-          </Text>
+          {avatars[otherUid] ? (
+            <Image source={{ uri: avatars[otherUid]! }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {otherName.charAt(0).toUpperCase()}
+            </Text>
+          )}
         </View>
         <View style={styles.info}>
           <View style={styles.nameRow}>
@@ -139,6 +156,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarText: {
     color: Colors.white,

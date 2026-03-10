@@ -1,12 +1,14 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getConversation, markConversationRead, Message, sendMessage, subscribeToMessages } from '@/lib/firestore/conversations';
+import { getUserProfile } from '@/lib/firestore/users';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -27,6 +29,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [otherName, setOtherName] = useState('Chat');
   const [otherUid, setOtherUid] = useState('');
+  const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const { bottom } = useSafeAreaInsets();
 
@@ -37,6 +40,9 @@ export default function ChatScreen() {
         setOtherUid(other);
         setOtherName(conv.participantNames?.[other] ?? 'Chat');
         markConversationRead(id, user.uid);
+        getUserProfile(other).then(p => {
+          if (p?.avatarUrl) setOtherAvatar(p.avatarUrl);
+        });
       }
     });
     const unsub = subscribeToMessages(id, msgs => {
@@ -95,7 +101,11 @@ export default function ChatScreen() {
           onPress={() => router.push(`/user/${otherUid}` as any)}
         >
           <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+            {otherAvatar ? (
+              <Image source={{ uri: otherAvatar }} style={styles.headerAvatarImage} />
+            ) : (
+              <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+            )}
           </View>
           <Text style={styles.headerTitle}>{otherName}</Text>
         </TouchableOpacity>
@@ -176,6 +186,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerAvatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   headerAvatarText: {
     fontSize: 16,

@@ -8,7 +8,7 @@ import { getUserProfile, UserProfile } from '@/lib/firestore/users';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   pending: { label: 'Pending', color: Colors.warning, bg: '#FFF8E1' },
@@ -191,11 +191,15 @@ export default function RequestDetailScreen() {
           >
             <View style={styles.personRowLeft}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {isTraveler
-                    ? (request.requesterName?.charAt(0)?.toUpperCase() ?? '?')
-                    : (contactProfile?.name?.charAt(0)?.toUpperCase() ?? '?')}
-                </Text>
+                {contactProfile?.avatarUrl ? (
+                  <Image source={{ uri: contactProfile.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {isTraveler
+                      ? (request.requesterName?.charAt(0)?.toUpperCase() ?? '?')
+                      : (contactProfile?.name?.charAt(0)?.toUpperCase() ?? '?')}
+                  </Text>
+                )}
               </View>
               <Text style={styles.personName}>
                 {isTraveler ? request.requesterName : (contactProfile?.name ?? 'Loading...')}
@@ -343,6 +347,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
+  avatarImage: { width: 44, height: 44, borderRadius: 22 },
   avatarText: { fontSize: 18, fontWeight: '700', color: Colors.white },
   personName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
   phoneRow: {

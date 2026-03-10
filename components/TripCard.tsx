@@ -1,8 +1,10 @@
 import { Colors } from '@/constants/theme';
 import { getFlag } from '@/data/locations';
 import { Trip } from '@/lib/firestore/trips';
+import { getUserProfile } from '@/lib/firestore/users';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 function locName(loc: Trip['from']): string {
   return typeof loc === 'string' ? loc : loc.city_name;
@@ -22,6 +24,15 @@ interface Props {
 
 export default function TripCard({ trip, isRequested }: Props) {
   const router = useRouter();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(trip.travelerAvatar);
+
+  useEffect(() => {
+    if (!trip.travelerAvatar && trip.travelerId) {
+      getUserProfile(trip.travelerId).then(p => {
+        if (p?.avatarUrl) setAvatarUrl(p.avatarUrl);
+      });
+    }
+  }, [trip.travelerId, trip.travelerAvatar]);
 
   return (
     <TouchableOpacity
@@ -31,9 +42,13 @@ export default function TripCard({ trip, isRequested }: Props) {
     >
       <View style={styles.travelerRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {trip.travelerName?.charAt(0).toUpperCase() ?? '?'}
-          </Text>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {trip.travelerName?.charAt(0).toUpperCase() ?? '?'}
+            </Text>
+          )}
         </View>
         <View style={styles.travelerInfo}>
           <Text style={styles.travelerName}>{trip.travelerName}</Text>
@@ -109,6 +124,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarText: {
     color: Colors.white,

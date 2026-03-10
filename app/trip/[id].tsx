@@ -9,11 +9,13 @@ import {
   Trip,
   TripLocation,
 } from "@/lib/firestore/trips";
+import { getUserProfile } from "@/lib/firestore/users";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,6 +43,7 @@ export default function TripDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [checkingRequest, setCheckingRequest] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,6 +54,15 @@ export default function TripDetailScreen() {
         user ? hasExistingRequest(id, user.uid) : Promise.resolve(false),
       ]).then(([t, requested]) => {
         setTrip(t);
+        if (t) {
+          if (t.travelerAvatar) {
+            setAvatarUrl(t.travelerAvatar);
+          } else {
+            getUserProfile(t.travelerId).then(p => {
+              if (p?.avatarUrl) setAvatarUrl(p.avatarUrl);
+            });
+          }
+        }
         if (t && user && t.travelerId !== user.uid) setAlreadyRequested(requested);
         setLoading(false);
         setCheckingRequest(false);
@@ -104,9 +116,13 @@ export default function TripDetailScreen() {
               onPress={() => router.push(`/user/${trip.travelerId}` as any)}
             >
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {trip.travelerName?.charAt(0).toUpperCase() ?? "?"}
-                </Text>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {trip.travelerName?.charAt(0).toUpperCase() ?? "?"}
+                  </Text>
+                )}
               </View>
               <View style={styles.travelerInfo}>
                 <Text style={styles.travelerName}>{trip.travelerName}</Text>
@@ -279,6 +295,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   avatarText: {
     fontSize: 22,

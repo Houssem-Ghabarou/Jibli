@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -102,15 +103,28 @@ function ReceivedRequestCard({
 }) {
   const isPending = item.status === 'pending';
   const color = STATUS_COLORS[item.status] ?? Colors.textSecondary;
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(item.requesterAvatar);
+
+  useEffect(() => {
+    if (!item.requesterAvatar && item.requesterId) {
+      getUserProfile(item.requesterId).then(p => {
+        if (p?.avatarUrl) setAvatarUrl(p.avatarUrl);
+      });
+    }
+  }, [item.requesterId, item.requesterAvatar]);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.cardTop}>
         <View style={styles.requesterRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {item.requesterName?.charAt(0)?.toUpperCase() ?? '?'}
-            </Text>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {item.requesterName?.charAt(0)?.toUpperCase() ?? '?'}
+              </Text>
+            )}
           </View>
           <View style={styles.requesterInfo}>
             <Text style={styles.requesterName}>{item.requesterName}</Text>
@@ -491,6 +505,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   avatarText: {
     fontSize: 16,

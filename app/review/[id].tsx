@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { updateRequestStatus } from '@/lib/firestore/requests';
+import { getUserProfile } from '@/lib/firestore/users';
 import firestore from '@react-native-firebase/firestore';
 import { useUI } from '@/context/UIContext';
 
@@ -30,6 +32,15 @@ export default function ReviewScreen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [travelerAvatar, setTravelerAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (travelerId) {
+      getUserProfile(travelerId).then(p => {
+        if (p?.avatarUrl) setTravelerAvatar(p.avatarUrl);
+      });
+    }
+  }, [travelerId]);
 
   async function handleSubmit() {
     if (rating === 0) {
@@ -86,9 +97,13 @@ export default function ReviewScreen() {
         {/* Traveler info */}
         <View style={styles.travelerSection}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {travelerName?.charAt(0)?.toUpperCase() ?? '?'}
-            </Text>
+            {travelerAvatar ? (
+              <Image source={{ uri: travelerAvatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {travelerName?.charAt(0)?.toUpperCase() ?? '?'}
+              </Text>
+            )}
           </View>
           <Text style={styles.travelerName}>{travelerName}</Text>
           <Text style={styles.travelerLabel}>Your traveler</Text>
@@ -183,6 +198,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   avatarText: {
     fontSize: 28,
