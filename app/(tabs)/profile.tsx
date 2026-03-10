@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getUserProfile, UserProfile } from '@/lib/firestore/users';
-import { logout } from '@/lib/auth';
 import { useUI } from '@/context/UIContext';
+import { logout } from '@/lib/auth';
+import { getUserProfile, UserProfile } from '@/lib/firestore/users';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 function ActionRow({
   icon,
@@ -92,17 +92,12 @@ export default function ProfileScreen() {
             <Text style={styles.location}>{profile.location}</Text>
           </View>
         )}
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>★ {profile?.rating ? profile.rating.toFixed(1) : '—'}</Text>
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
-          <View style={styles.statDivider} />
+        {/* <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{profile?.deliveryCount ?? 0}</Text>
             <Text style={styles.statLabel}>Deliveries</Text>
           </View>
-        </View>
+        </View> */}
       </View>
 
       {/* Actions */}
@@ -112,15 +107,16 @@ export default function ProfileScreen() {
           label="My Trips"
           onPress={() => router.push('/(tabs)/trips')}
         />
-        <ActionRow
+        {/* <ActionRow
           icon="bag-outline"
           label="My Requests"
-          onPress={() => router.push('/(tabs)/requests')}
-        />
+          onPress={() => router.push('/orders')}
+
+        /> */}
         <ActionRow
           icon="receipt-outline"
-          label="My Orders"
-          onPress={() => router.push('/orders')}
+          label="My Requests"
+          onPress={() => router.push('/(tabs)/requests')}
           last
         />
       </View>

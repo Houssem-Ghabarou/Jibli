@@ -1,9 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import { Trip } from '@/lib/firestore/trips';
 import { getFlag } from '@/data/locations';
-import { format } from 'date-fns';
+import { Trip } from '@/lib/firestore/trips';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 function locName(loc: Trip['from']): string {
   return typeof loc === 'string' ? loc : loc.city_name;
@@ -38,10 +37,6 @@ export default function TripCard({ trip, isRequested }: Props) {
         </View>
         <View style={styles.travelerInfo}>
           <Text style={styles.travelerName}>{trip.travelerName}</Text>
-          <View style={styles.ratingRow}>
-            <Text style={styles.star}>★</Text>
-            <Text style={styles.rating}>{trip.travelerRating?.toFixed(1) ?? '—'}</Text>
-          </View>
         </View>
         <View style={[styles.statusBadge, trip.status === 'open' ? styles.open : styles.closed]}>
           <Text style={[styles.statusText, trip.status === 'open' ? styles.openText : styles.closedText]}>

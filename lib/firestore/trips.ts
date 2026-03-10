@@ -13,7 +13,6 @@ export interface Trip {
   travelerId: string;
   travelerName: string;
   travelerAvatar: string | null;
-  travelerRating: number;
   from: TripLocation | string;
   to: TripLocation | string;
   fromCity: string;      // lowercase, top-level — used for server-side filter
@@ -29,7 +28,6 @@ export interface CreateTripData {
   travelerId: string;
   travelerName: string;
   travelerAvatar: string | null;
-  travelerRating: number;
   from: TripLocation;
   to: TripLocation;
   date: string;
@@ -72,9 +70,9 @@ export async function getTrips(
   function buildQuery(cur: FirebaseFirestoreTypes.QueryDocumentSnapshot | null) {
     let q: any = firestore().collection('trips').where('status', '==', 'open');
     if (filters?.from) q = q.where('fromCity', '==', filters.from.toLowerCase());
-    if (filters?.to)   q = q.where('toCity',   '==', filters.to.toLowerCase());
+    if (filters?.to) q = q.where('toCity', '==', filters.to.toLowerCase());
     if (filters?.dateFrom) q = q.where('date', '>=', filters.dateFrom);
-    if (filters?.dateTo)   q = q.where('date', '<=', filters.dateTo);
+    if (filters?.dateTo) q = q.where('date', '<=', filters.dateTo);
     q = hasDateFilter
       ? q.orderBy('date', 'asc')
       : q.orderBy('createdAt', 'desc');

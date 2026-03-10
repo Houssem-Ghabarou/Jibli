@@ -1,25 +1,25 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { createTrip } from '@/lib/firestore/trips';
-import { getUserProfile } from '@/lib/firestore/users';
+import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
 import LocationField, { SelectedLocation } from '@/components/LocationField';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
-import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useUI } from '@/context/UIContext';
+import { createTrip } from '@/lib/firestore/trips';
+import { getUserProfile } from '@/lib/firestore/users';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
@@ -74,7 +74,6 @@ export default function CreateTripScreen() {
         travelerId: user!.uid,
         travelerName: profile?.name ?? user!.displayName ?? user!.email ?? 'Unknown',
         travelerAvatar: profile?.avatarUrl ?? user!.photoURL ?? null,
-        travelerRating: profile?.rating ?? 0,
         from: fromLocation,
         to: toLocation,
         date: date.trim(),

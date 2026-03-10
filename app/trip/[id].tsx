@@ -1,5 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useUI } from "@/context/UIContext";
 import { getFlag } from "@/data/locations";
 import { hasExistingRequest } from "@/lib/firestore/requests";
 import {
@@ -19,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useUI } from "@/context/UIContext";
 
 function locDisplay(loc: TripLocation | string): {
   name: string;
@@ -106,9 +106,6 @@ export default function TripDetailScreen() {
             </View>
             <View style={styles.travelerInfo}>
               <Text style={styles.travelerName}>{trip.travelerName}</Text>
-              <Text style={styles.travelerRating}>
-                ★ {trip.travelerRating?.toFixed(1) ?? "—"}
-              </Text>
             </View>
             <View
               style={[
@@ -172,23 +169,23 @@ export default function TripDetailScreen() {
           checkingRequest
             ? <ActivityIndicator color={Colors.accent} size="small" style={{ marginTop: 16 }} />
             : <TouchableOpacity
-                style={[styles.ctaButton, alreadyRequested && styles.ctaDisabled]}
-                disabled={alreadyRequested}
-                onPress={() =>
-                  router.push({
-                    pathname: "/request/create",
-                    params: {
-                      tripId: trip.id,
-                      travelerId: trip.travelerId,
-                      travelerName: trip.travelerName,
-                    },
-                  })
-                }
-              >
-                <Text style={styles.ctaText}>
-                  {alreadyRequested ? "Already Requested" : "Request Item Delivery"}
-                </Text>
-              </TouchableOpacity>
+              style={[styles.ctaButton, alreadyRequested && styles.ctaDisabled]}
+              disabled={alreadyRequested}
+              onPress={() =>
+                router.push({
+                  pathname: "/request/create",
+                  params: {
+                    tripId: trip.id,
+                    travelerId: trip.travelerId,
+                    travelerName: trip.travelerName,
+                  },
+                })
+              }
+            >
+              <Text style={styles.ctaText}>
+                {alreadyRequested ? "Already Requested" : "Request Item Delivery"}
+              </Text>
+            </TouchableOpacity>
         )}
 
         {isOwner && trip.status === "open" && (

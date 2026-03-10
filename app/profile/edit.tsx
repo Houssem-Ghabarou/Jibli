@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { useUI } from '@/context/UIContext';
+import { getUserProfile, updateUserProfile } from '@/lib/firestore/users';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { getUserProfile, updateUserProfile } from '@/lib/firestore/users';
-import { useUI } from '@/context/UIContext';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
@@ -106,7 +106,7 @@ export default function EditProfileScreen() {
           />
         </View>
 
-        <View style={styles.field}>
+        {/* <View style={styles.field}>
           <Text style={styles.label}>Location</Text>
           <TextInput
             style={styles.input}
@@ -115,7 +115,7 @@ export default function EditProfileScreen() {
             placeholder="e.g. Paris, France"
             placeholderTextColor={Colors.textMuted}
           />
-        </View>
+        </View> */}
 
         <View style={styles.field}>
           <Text style={styles.label}>Phone Number (optional)</Text>
