@@ -67,7 +67,11 @@ export async function hasExistingRequest(tripId: string, requesterId: string): P
     .where('tripId', '==', tripId)
     .where('requesterId', '==', requesterId)
     .get();
-  return !snapshot.empty;
+  // Exclude cancelled and rejected requests — user can request again
+  return snapshot.docs.some((doc: any) => {
+    const status = doc.data().status;
+    return status !== 'cancelled' && status !== 'rejected';
+  });
 }
 
 export async function getRequestsByTrip(tripId: string): Promise<Request[]> {
@@ -127,11 +131,17 @@ export async function updateRequestStatus(id: string, status: RequestStatus): Pr
   await firestore().collection('requests').doc(id).update({ status });
 }
 
-/** Returns a Set of tripIds the user has already requested on (for feed badges). */
+/** Returns a Set of tripIds the user has active (non-cancelled/rejected) requests on. */
 export async function getMyRequestedTripIds(requesterId: string): Promise<Set<string>> {
   const snapshot = await firestore()
     .collection('requests')
     .where('requesterId', '==', requesterId)
     .get();
-  return new Set(snapshot.docs.map((doc: any) => doc.data().tripId as string));
+  const activeIds = snapshot.docs
+    .filter((doc: any) => {
+      const status = doc.data().status;
+      return status !== 'cancelled' && status !== 'rejected';
+    })
+    .map((doc: any) => doc.data().tripId as string);
+  return new Set(activeIds);
 }

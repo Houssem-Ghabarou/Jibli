@@ -173,32 +173,37 @@ export default function RequestDetailScreen() {
 
         {/* Trip route card */}
         {trip && (
-          <TouchableOpacity style={styles.card} onPress={() => router.push(`/trip/${trip.id}` as any)}>
+          <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push(`/trip/${trip.id}` as any)}>
             <View style={styles.tripHeaderRow}>
               <Text style={styles.sectionLabel}>Trip</Text>
               {trip.tripCode && <Text style={styles.tripCodeBadge}>{trip.tripCode}</Text>}
             </View>
-            <View style={styles.routeRow}>
-              <View style={styles.routePoint}>
-                <Ionicons name="airplane-outline" size={18} color={Colors.accent} />
-                <Text style={styles.routeCity}>
-                  {typeof trip.from === 'string' ? trip.from : trip.from.city_name}
-                </Text>
+            <View style={styles.tripClickableRow}>
+              <View style={{ flex: 1, gap: 8 }}>
+                <View style={styles.routeRow}>
+                  <View style={styles.routePoint}>
+                    <Ionicons name="airplane-outline" size={18} color={Colors.accent} />
+                    <Text style={styles.routeCity}>
+                      {typeof trip.from === 'string' ? trip.from : trip.from.city_name}
+                    </Text>
+                  </View>
+                  <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
+                  <View style={styles.routePoint}>
+                    <Ionicons name="location-outline" size={18} color={Colors.success} />
+                    <Text style={styles.routeCity}>
+                      {typeof trip.to === 'string' ? trip.to : trip.to.city_name}
+                    </Text>
+                  </View>
+                </View>
+                {trip.date && (
+                  <View style={styles.routeDateRow}>
+                    <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
+                    <Text style={styles.routeDateText}>{trip.date}</Text>
+                  </View>
+                )}
               </View>
-              <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
-              <View style={styles.routePoint}>
-                <Ionicons name="location-outline" size={18} color={Colors.success} />
-                <Text style={styles.routeCity}>
-                  {typeof trip.to === 'string' ? trip.to : trip.to.city_name}
-                </Text>
-              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </View>
-            {trip.date && (
-              <View style={styles.routeDateRow}>
-                <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-                <Text style={styles.routeDateText}>{trip.date}</Text>
-              </View>
-            )}
           </TouchableOpacity>
         )}
 
@@ -451,11 +456,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     letterSpacing: 0.5,
   },
+  tripClickableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 12,
+    borderRadius: 12,
+  },
   routeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 4,
   },
   routePoint: {
     flexDirection: 'row',

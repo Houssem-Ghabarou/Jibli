@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeToConversations, Conversation } from '@/lib/firestore/conversations';
+import { getRequestById } from '@/lib/firestore/requests';
+import { getTripById, Trip } from '@/lib/firestore/trips';
 import { getUserProfile } from '@/lib/firestore/users';
 
 export default function MessagesScreen() {
@@ -21,6 +23,8 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [avatars, setAvatars] = useState<Record<string, string | null>>({});
+  const [tripMeta, setTripMeta] = useState<Record<string, { from: string; to: string; tripCode?: string }>>({});
+  const [itemNames, setItemNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -35,6 +39,36 @@ export default function MessagesScreen() {
           const updates: Record<string, string | null> = {};
           newUids.forEach((uid, i) => { updates[uid] = profiles[i]?.avatarUrl ?? null; });
           setAvatars(prev => ({ ...prev, ...updates }));
+        });
+      }
+      // Fetch trip metadata
+      const newTripIds = convs.map(c => c.tripId).filter(tid => tid && !(tid in tripMeta));
+      const uniqueTripIds = [...new Set(newTripIds)];
+      if (uniqueTripIds.length > 0) {
+        Promise.all(uniqueTripIds.map(tid => getTripById(tid))).then(trips => {
+          const updates: Record<string, { from: string; to: string; tripCode?: string }> = {};
+          uniqueTripIds.forEach((tid, i) => {
+            const t = trips[i];
+            if (t) {
+              const from = typeof t.from === 'string' ? t.from : t.from.city_name;
+              const to = typeof t.to === 'string' ? t.to : t.to.city_name;
+              updates[tid] = { from, to, tripCode: t.tripCode };
+            }
+          });
+          setTripMeta(prev => ({ ...prev, ...updates }));
+        });
+      }
+      // Fetch item names from requests
+      const newReqIds = convs.map(c => c.requestId).filter(rid => rid && !(rid in itemNames));
+      const uniqueReqIds = [...new Set(newReqIds)];
+      if (uniqueReqIds.length > 0) {
+        Promise.all(uniqueReqIds.map(rid => getRequestById(rid))).then(reqs => {
+          const updates: Record<string, string> = {};
+          uniqueReqIds.forEach((rid, i) => {
+            const r = reqs[i];
+            if (r) updates[rid] = r.itemName;
+          });
+          setItemNames(prev => ({ ...prev, ...updates }));
         });
       }
     });
@@ -56,6 +90,8 @@ export default function MessagesScreen() {
     const otherUid = item.participants.find(p => p !== user?.uid) ?? '';
     const otherName = item.participantNames?.[otherUid] ?? 'Unknown';
     const unread = item.unreadCounts?.[user?.uid ?? ''] ?? 0;
+    const trip = tripMeta[item.tripId];
+    const itemName = itemNames[item.requestId];
 
     return (
       <TouchableOpacity
@@ -77,6 +113,22 @@ export default function MessagesScreen() {
             <Text style={[styles.name, unread > 0 && styles.nameUnread]}>{otherName}</Text>
             <Text style={styles.time}>{formatTime((item as any).lastMessageAt)}</Text>
           </View>
+          {(trip || itemName) && (
+            <View style={styles.metaRow}>
+              {trip && (
+                <View style={styles.routeChip}>
+                  <Ionicons name="airplane-outline" size={11} color={Colors.accent} />
+                  <Text style={styles.routeChipText}>{trip.from} → {trip.to}</Text>
+                </View>
+              )}
+              {itemName && (
+                <View style={styles.itemChip}>
+                  <Ionicons name="cube-outline" size={11} color={Colors.textSecondary} />
+                  <Text style={styles.itemChipText} numberOfLines={1}>{itemName}</Text>
+                </View>
+              )}
+            </View>
+          )}
           <Text style={[styles.lastMessage, unread > 0 && styles.lastMessageUnread]} numberOfLines={1}>
             {item.lastMessage || 'No messages yet'}
           </Text>
@@ -186,6 +238,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginLeft: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  routeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EEF4FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  routeChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.accent,
+  },
+  itemChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 1,
+  },
+  itemChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    flexShrink: 1,
   },
   lastMessage: {
     fontSize: 13,
