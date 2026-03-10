@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
@@ -36,21 +36,21 @@ export default function RootLayout() {
         <UIProvider>
           <AuthProvider>
             <NotificationsProvider>
-            <AuthGuard />
-            <Stack>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="trip/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="trip/create" options={{ headerShown: false }} />
-              <Stack.Screen name="request/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="request/create" options={{ headerShown: false }} />
-              <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="notifications" options={{ headerShown: false }} />
-              <Stack.Screen name="orders" options={{ headerShown: false }} />
-              <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-              <Stack.Screen name="review/[id]" options={{ headerShown: false }} />
-            </Stack>
-            <StatusBar style="auto" />
+              <AuthGuard />
+              <Stack>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="trip/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="trip/create" options={{ headerShown: false }} />
+                <Stack.Screen name="request/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="request/create" options={{ headerShown: false }} />
+                <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                <Stack.Screen name="orders" options={{ headerShown: false }} />
+                <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+                <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+              </Stack>
+              <StatusBar style="auto" />
             </NotificationsProvider>
           </AuthProvider>
         </UIProvider>

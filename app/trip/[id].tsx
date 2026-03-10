@@ -99,14 +99,19 @@ export default function TripDetailScreen() {
         {/* Traveler info */}
         <View style={styles.card}>
           <View style={styles.travelerRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {trip.travelerName?.charAt(0).toUpperCase() ?? "?"}
-              </Text>
-            </View>
-            <View style={styles.travelerInfo}>
-              <Text style={styles.travelerName}>{trip.travelerName}</Text>
-            </View>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+              onPress={() => router.push(`/user/${trip.travelerId}` as any)}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {trip.travelerName?.charAt(0).toUpperCase() ?? "?"}
+                </Text>
+              </View>
+              <View style={styles.travelerInfo}>
+                <Text style={styles.travelerName}>{trip.travelerName}</Text>
+              </View>
+            </TouchableOpacity>
             <View
               style={[
                 styles.statusBadge,

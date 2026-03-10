@@ -14,7 +14,6 @@ export async function register(name: string, email: string, password: string): P
     email,
     avatarUrl: null,
     location: null,
-    deliveryCount: 0,
     createdAt: firestore.FieldValue.serverTimestamp(),
   });
 

@@ -1,21 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { subscribeToMessages, sendMessage, getConversation, markConversationRead, Message } from '@/lib/firestore/conversations';
+import { getConversation, markConversationRead, Message, sendMessage, subscribeToMessages } from '@/lib/firestore/conversations';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -90,12 +90,15 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={() => router.push(`/user/${otherUid}` as any)}
+        >
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.headerTitle}>{otherName}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {loading ? (

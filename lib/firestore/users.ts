@@ -7,7 +7,8 @@ export interface UserProfile {
   email: string;
   avatarUrl: string | null;
   location: string | null;
-  deliveryCount: number;
+  phone?: string;
+  bio?: string;
   createdAt: any;
 }
 

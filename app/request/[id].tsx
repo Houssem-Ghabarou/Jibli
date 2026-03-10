@@ -1,29 +1,22 @@
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getRequestById, updateRequestStatus, Request } from '@/lib/firestore/requests';
-import { getOrCreateConversation } from '@/lib/firestore/conversations';
-import { getUserProfile } from '@/lib/firestore/users';
-import { createNotification } from '@/lib/firestore/notifications';
 import { useUI } from '@/context/UIContext';
+import { getOrCreateConversation } from '@/lib/firestore/conversations';
+import { createNotification } from '@/lib/firestore/notifications';
+import { getRequestById, Request, updateRequestStatus } from '@/lib/firestore/requests';
+import { getUserProfile, UserProfile } from '@/lib/firestore/users';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:   { label: 'Pending',   color: Colors.warning,   bg: '#FFF8E1' },
-  accepted:  { label: 'Accepted',  color: Colors.success,   bg: '#E8F8F0' },
-  rejected:  { label: 'Declined',  color: '#E74C3C',        bg: '#FEE8E8' },
-  bought:    { label: 'Bought',    color: '#3498DB',        bg: '#E8F4FD' },
-  delivered: { label: 'Delivered', color: '#9B59B6',        bg: '#F4ECF7' },
-  completed: { label: 'Completed', color: Colors.success,   bg: '#E8F8F0' },
+  pending: { label: 'Pending', color: Colors.warning, bg: '#FFF8E1' },
+  accepted: { label: 'Accepted', color: Colors.success, bg: '#E8F8F0' },
+  rejected: { label: 'Declined', color: '#E74C3C', bg: '#FEE8E8' },
+  bought: { label: 'Bought', color: '#3498DB', bg: '#E8F4FD' },
+  delivered: { label: 'Delivered', color: '#9B59B6', bg: '#F4ECF7' },
+  completed: { label: 'Completed', color: Colors.success, bg: '#E8F8F0' },
 };
 
 export default function RequestDetailScreen() {
@@ -34,6 +27,7 @@ export default function RequestDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [contactProfile, setContactProfile] = useState<UserProfile | null>(null);
   const { showToast, confirm } = useUI();
 
   useFocusEffect(
@@ -46,6 +40,14 @@ export default function RequestDetailScreen() {
           getOrCreateConversation(
             r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
           ).then(setConversationId);
+        }
+
+        if (r && user) {
+          const isTrv = r.travelerId === user.uid;
+          const targetId = isTrv ? r.requesterId : r.travelerId;
+          getUserProfile(targetId).then(p => {
+            if (p) setContactProfile(p);
+          });
         }
       });
     }, [id])
@@ -66,6 +68,16 @@ export default function RequestDetailScreen() {
         travelerName, request.requesterName ?? 'Requester',
       );
       setConversationId(cid);
+      if (travelerProfile?.phone) {
+        // In case the accepted traveler wants to notify immediately
+      }
+
+      // Fetch requester phone when accepting
+      const reqProfile = await getUserProfile(request.requesterId);
+      if (reqProfile) {
+        setContactProfile(reqProfile);
+      }
+
       await createNotification(
         request.requesterId, 'request_accepted',
         'Request Accepted!',
@@ -170,17 +182,43 @@ export default function RequestDetailScreen() {
           </View>
         </View>
 
-        {/* Requester card */}
+        {/* Contact card */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Requester</Text>
-          <View style={styles.personRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {request.requesterName?.charAt(0)?.toUpperCase() ?? '?'}
+          <Text style={styles.sectionLabel}>{isTraveler ? 'Requester' : 'Traveler'}</Text>
+          <TouchableOpacity
+            style={styles.personRowClickable}
+            onPress={() => router.push(`/user/${isTraveler ? request.requesterId : request.travelerId}` as any)}
+          >
+            <View style={styles.personRowLeft}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {isTraveler
+                    ? (request.requesterName?.charAt(0)?.toUpperCase() ?? '?')
+                    : (contactProfile?.name?.charAt(0)?.toUpperCase() ?? '?')}
+                </Text>
+              </View>
+              <Text style={styles.personName}>
+                {isTraveler ? request.requesterName : (contactProfile?.name ?? 'Loading...')}
               </Text>
             </View>
-            <Text style={styles.personName}>{request.requesterName}</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+
+          {contactProfile?.phone && request.status !== 'pending' && request.status !== 'rejected' && (
+            <TouchableOpacity
+              style={styles.phoneRow}
+              onPress={() => Linking.openURL(`tel:${contactProfile.phone}`)}
+            >
+              <View style={styles.phoneIconBg}>
+                <Ionicons name="call" size={18} color={Colors.accent} />
+              </View>
+              <View style={styles.phoneInfo}>
+                <Text style={styles.phoneLabel}>Phone Number</Text>
+                <Text style={styles.phoneValue}>{contactProfile.phone}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Actions */}
@@ -291,7 +329,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   metaValue: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  personRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  personRowClickable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    padding: 12,
+    borderRadius: 12,
+  },
+  personRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.accent,
@@ -299,6 +345,25 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 18, fontWeight: '700', color: Colors.white },
   personName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  phoneIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneInfo: { flex: 1 },
+  phoneLabel: { fontSize: 12, color: Colors.textSecondary, marginBottom: 2 },
+  phoneValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   actionRow: { flexDirection: 'row', gap: 12 },
   declineBtn: {
     flex: 1, paddingVertical: 14, borderRadius: 24,
