@@ -88,7 +88,7 @@ export async function sendMessage(
 
   const convRef = firestore().collection('conversations').doc(conversationId);
   batch.update(convRef, {
-    lastMessage: text,
+    lastMessage: text || (imageUrl ? '📷 Photo' : ''),
     lastMessageAt: firestore.FieldValue.serverTimestamp(),
     [`unreadCounts.${recipientId}`]: firestore.FieldValue.increment(1),
   });
