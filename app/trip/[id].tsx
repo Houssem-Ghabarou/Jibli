@@ -95,14 +95,19 @@ export default function TripDetailScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <View style={styles.routeBanner}>
-          <Text style={styles.routeCity}>
-            {locDisplay(trip.from).flag} {locDisplay(trip.from).name}
-          </Text>
-          <Ionicons name="airplane" size={20} color={Colors.white} />
-          <Text style={styles.routeCity}>
-            {locDisplay(trip.to).flag} {locDisplay(trip.to).name}
-          </Text>
+        <View style={styles.headerCenter}>
+          <View style={styles.routeBanner}>
+            <Text style={styles.routeCity}>
+              {locDisplay(trip.from).flag} {locDisplay(trip.from).name}
+            </Text>
+            <Ionicons name="airplane" size={20} color={Colors.white} />
+            <Text style={styles.routeCity}>
+              {locDisplay(trip.to).flag} {locDisplay(trip.to).name}
+            </Text>
+          </View>
+          {trip.tripCode && (
+            <Text style={styles.tripCodeHeader}>{trip.tripCode}</Text>
+          )}
         </View>
         <View style={{ width: 24 }} />
       </View>
@@ -262,10 +267,20 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
+  headerCenter: {
+    alignItems: "center",
+    gap: 4,
+  },
   routeBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  tripCodeHeader: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.7)",
+    letterSpacing: 1,
   },
   routeCity: {
     fontSize: 18,

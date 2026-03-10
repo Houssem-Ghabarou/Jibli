@@ -49,15 +49,8 @@ export default function CreateTripScreen() {
       return;
     }
 
-    const fromCode = fromLocation.country_code ?? fromLocation.country;
-    const toCode = toLocation.country_code ?? toLocation.country;
-    const involvesTunisia = fromCode === 'TN' || toCode === 'TN';
-    if (!involvesTunisia) {
-      showToast('At least one end of the trip must be Tunisia. Jibli connects Tunisia with the world.', 'error');
-      return;
-    }
-    if (fromCode === toCode) {
-      showToast('From and To must be in different countries.', 'error');
+    if (fromLocation.city_id === toLocation.city_id) {
+      showToast('From and To cannot be the same city.', 'error');
       return;
     }
 

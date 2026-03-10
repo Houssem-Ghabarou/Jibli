@@ -4,6 +4,7 @@ import { useUI } from '@/context/UIContext';
 import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { createNotification } from '@/lib/firestore/notifications';
 import { getRequestById, Request, updateRequestStatus } from '@/lib/firestore/requests';
+import { getTripById, Trip } from '@/lib/firestore/trips';
 import { getUserProfile, UserProfile } from '@/lib/firestore/users';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -17,6 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   bought: { label: 'Bought', color: '#3498DB', bg: '#E8F4FD' },
   delivered: { label: 'Delivered', color: '#9B59B6', bg: '#F4ECF7' },
   completed: { label: 'Completed', color: Colors.success, bg: '#E8F8F0' },
+  cancelled: { label: 'Cancelled', color: '#E74C3C', bg: '#FEE8E8' },
 };
 
 export default function RequestDetailScreen() {
@@ -28,6 +30,7 @@ export default function RequestDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [contactProfile, setContactProfile] = useState<UserProfile | null>(null);
+  const [trip, setTrip] = useState<Trip | null>(null);
   const { showToast, confirm } = useUI();
 
   useFocusEffect(
@@ -36,6 +39,9 @@ export default function RequestDetailScreen() {
       getRequestById(id).then(r => {
         setRequest(r);
         setLoading(false);
+        if (r) {
+          getTripById(r.tripId).then(t => { if (t) setTrip(t); });
+        }
         if (r && r.status !== 'pending' && r.status !== 'rejected') {
           getOrCreateConversation(
             r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
@@ -165,6 +171,37 @@ export default function RequestDetailScreen() {
           <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
         </View>
 
+        {/* Trip route card */}
+        {trip && (
+          <TouchableOpacity style={styles.card} onPress={() => router.push(`/trip/${trip.id}` as any)}>
+            <View style={styles.tripHeaderRow}>
+              <Text style={styles.sectionLabel}>Trip</Text>
+              {trip.tripCode && <Text style={styles.tripCodeBadge}>{trip.tripCode}</Text>}
+            </View>
+            <View style={styles.routeRow}>
+              <View style={styles.routePoint}>
+                <Ionicons name="airplane-outline" size={18} color={Colors.accent} />
+                <Text style={styles.routeCity}>
+                  {typeof trip.from === 'string' ? trip.from : trip.from.city_name}
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
+              <View style={styles.routePoint}>
+                <Ionicons name="location-outline" size={18} color={Colors.success} />
+                <Text style={styles.routeCity}>
+                  {typeof trip.to === 'string' ? trip.to : trip.to.city_name}
+                </Text>
+              </View>
+            </View>
+            {trip.date && (
+              <View style={styles.routeDateRow}>
+                <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
+                <Text style={styles.routeDateText}>{trip.date}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
         {/* Item card */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Item</Text>
@@ -263,7 +300,7 @@ export default function RequestDetailScreen() {
         )}
 
         {/* Open chat once accepted */}
-        {conversationId && request.status !== 'rejected' && (
+        {conversationId && request.status !== 'rejected' && request.status !== 'cancelled' && (
           <TouchableOpacity
             style={styles.chatBtn}
             onPress={() => router.push(`/chat/${conversationId}`)}
@@ -399,4 +436,45 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   disabled: { opacity: 0.6 },
+  tripHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tripCodeBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.accent,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    letterSpacing: 0.5,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  routePoint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  routeCity: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  routeDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  routeDateText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
 });

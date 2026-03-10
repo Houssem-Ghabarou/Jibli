@@ -52,6 +52,9 @@ export default function TripCard({ trip, isRequested }: Props) {
         </View>
         <View style={styles.travelerInfo}>
           <Text style={styles.travelerName}>{trip.travelerName}</Text>
+          {trip.tripCode && (
+            <Text style={styles.tripCode}>{trip.tripCode}</Text>
+          )}
         </View>
         <View style={[styles.statusBadge, trip.status === 'open' ? styles.open : styles.closed]}>
           <Text style={[styles.statusText, trip.status === 'open' ? styles.openText : styles.closedText]}>
@@ -142,6 +145,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  tripCode: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.accent,
+    marginTop: 2,
   },
   ratingRow: {
     flexDirection: 'row',

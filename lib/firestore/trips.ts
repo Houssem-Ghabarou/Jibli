@@ -10,6 +10,7 @@ export interface TripLocation {
 
 export interface Trip {
   id: string;
+  tripCode: string;
   travelerId: string;
   travelerName: string;
   travelerAvatar: string | null;
@@ -50,15 +51,18 @@ export interface Paginated<T> {
 
 const PAGE_SIZE = 20;
 
-function locationCountryCode(loc: TripLocation | string): string {
-  return typeof loc === 'string' ? '' : (loc.country_code ?? '');
+/** Generate a short unique trip code like "JBL-3K8F" */
+function generateTripCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no O/0/I/1 to avoid confusion
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `JBL-${code}`;
 }
 
-function isValidRoute(trip: Trip): boolean {
-  const fromCode = locationCountryCode(trip.from);
-  const toCode = locationCountryCode(trip.to);
-  if (!fromCode || !toCode) return true;
-  return (fromCode === 'TN' || toCode === 'TN') && fromCode !== toCode;
+function isValidRoute(_trip: Trip): boolean {
+  return true;
 }
 
 export async function getTrips(
@@ -144,8 +148,10 @@ export async function getTripsByUser(
 }
 
 export async function createTrip(data: CreateTripData): Promise<string> {
+  const tripCode = generateTripCode();
   const ref = await firestore().collection('trips').add({
     ...data,
+    tripCode,
     // Denormalized flat fields for server-side filtering
     fromCity: data.from.city_name.toLowerCase(),
     toCity: data.to.city_name.toLowerCase(),
