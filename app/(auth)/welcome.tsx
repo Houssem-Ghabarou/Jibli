@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function WelcomeScreen() {
         <View style={styles.logoCircle}>
           <Text style={styles.logoText}>J</Text>
         </View>
-        <Text style={styles.appName}>Jibli</Text>
+        <Text style={styles.appName}>Jibo</Text>
         <Text style={styles.tagline}>
           Connect with travelers bringing goods{'\n'}from Tunisia to your doorstep
         </Text>

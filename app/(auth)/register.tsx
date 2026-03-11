@@ -1,21 +1,21 @@
+import { Colors } from '@/constants/theme';
+import { useUI } from '@/context/UIContext';
+import { register } from '@/lib/auth';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { register } from '@/lib/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useUI } from '@/context/UIContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join Jibli and start shipping</Text>
+          <Text style={styles.subtitle}>Join Jibo and start shipping</Text>
         </View>
 
         <View style={styles.form}>

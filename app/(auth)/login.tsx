@@ -1,20 +1,20 @@
+import { Colors } from '@/constants/theme';
+import { useUI } from '@/context/UIContext';
+import { login } from '@/lib/auth';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { login } from '@/lib/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useUI } from '@/context/UIContext';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -43,10 +43,10 @@ export default function LoginScreen() {
         code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
           ? 'Incorrect email or password. Please try again.'
           : code === 'auth/invalid-email'
-          ? 'Please enter a valid email address.'
-          : code === 'auth/too-many-requests'
-          ? 'Too many failed attempts. Try again later.'
-          : err.message || 'Login failed. Please try again.';
+            ? 'Please enter a valid email address.'
+            : code === 'auth/too-many-requests'
+              ? 'Too many failed attempts. Try again later.'
+              : err.message || 'Login failed. Please try again.';
       showToast(message, 'error');
     } finally {
       setLoading(false);
@@ -63,7 +63,7 @@ export default function LoginScreen() {
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to your Jibli account</Text>
+        <Text style={styles.subtitle}>Sign in to your Jibo account</Text>
       </View>
 
       <View style={styles.form}>
@@ -98,8 +98,8 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.checkboxContainer} 
+        <TouchableOpacity
+          style={styles.checkboxContainer}
           onPress={() => setStayConnected(!stayConnected)}
           activeOpacity={0.7}
         >

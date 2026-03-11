@@ -33,35 +33,6 @@
           ]
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:730982996981:android:b538ca052d8eb0cfaedebc",
-        "android_client_info": {
-          "package_name": "com.jibo.app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "730982996981-mpcqvvthqoprdki4qtdninrbn5ot72pv.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBWiZ277Z3mKj1KQSG6bRDUlM1yXjF9_yU"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "730982996981-mpcqvvthqoprdki4qtdninrbn5ot72pv.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
     }
   ],
   "configuration_version": "1"
