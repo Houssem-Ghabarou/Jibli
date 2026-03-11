@@ -1,5 +1,4 @@
 import withFirebaseAppDelegate from "./plugins/with-firebase-appdelegate";
-import withModularHeaders from "./plugins/with-modular-headers";
 
 export default {
   expo: {
@@ -50,7 +49,7 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       withFirebaseAppDelegate,
-      withModularHeaders,
+      // withModularHeaders,
       [
         "expo-build-properties",
         {
