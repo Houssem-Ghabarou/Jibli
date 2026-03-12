@@ -1,5 +1,5 @@
 # Jibli — App State Document
-_Last updated: 2026-03-09_
+_Last updated: 2026-03-12_
 
 ---
 
@@ -20,7 +20,8 @@ Money (reward in TND) is agreed upfront.
 |---|---|
 | Framework | React Native + Expo (SDK 54) |
 | Routing | expo-router v6 (file-based) |
-| Backend | Firebase (Auth + Firestore + Storage) — `@react-native-firebase` v23 |
+| Backend | Firebase (Auth + Firestore) — `@react-native-firebase` v23 |
+| Image Storage | Cloudinary (avatars, chat images, request photos) — replaces Firebase Storage |
 | UI | Ionicons, `@gorhom/bottom-sheet` v5, custom components |
 | Animations | react-native-reanimated v4, react-native-gesture-handler v2 |
 | Forms | react-hook-form + zod (installed but used minimally) |
@@ -53,19 +54,22 @@ app/
 │
 ├── trip/
 │   ├── create.tsx           Post a new trip
-│   └── [id].tsx             Trip detail + request button
+│   └── [id].tsx             Trip detail + request button + traveler profile link
 │
 ├── request/
 │   ├── create.tsx           Send a delivery request on a trip
-│   └── [id].tsx             Request detail + accept/reject/chat
+│   └── [id].tsx             Request detail + accept/reject/chat + other party profile link
 │
 ├── chat/
-│   └── [id].tsx             Real-time 1:1 chat
+│   └── [id].tsx             Real-time 1:1 chat with image sending
+│
+├── user/
+│   └── [id].tsx             Public user profile viewer (any user)
 │
 ├── notifications.tsx        Notification list
 ├── orders.tsx               My Orders (= sent requests, from profile)
 └── profile/
-    └── edit.tsx             Edit name + location
+    └── edit.tsx             Edit name, location, bio, phone + avatar upload
 ```
 
 ---
@@ -84,22 +88,43 @@ app/
 - **Fixed:** Date was a plain TextInput — now a calendar picker
 
 ### Trip Detail (`app/trip/[id].tsx`)
-- **Working:** Shows traveler card, route, date, capacity, status. Owner can close trip. Others see "Request Item Delivery" button. Already-requested check.
+- **Working:** Shows traveler card (tappable → `/user/{travelerId}`), route, date, capacity, status. Owner can close trip. Others see "Request Item Delivery" button. Already-requested check.
+- **Added:** Traveler name/avatar is tappable; navigates to public profile
 
 ### Create Request (`app/request/create.tsx`)
 - **Working:** Item name, description, weight, reward. Sends request + creates notification for traveler.
 
 ### Request Detail (`app/request/[id].tsx`)
 - **Working:** Shows status bar. Traveler can accept/reject (status = pending). Accept opens/creates conversation. Chat button appears when accepted.
+- **Added:** Context-aware other-party display:
+
+  - Traveler sees: requester name, avatar, phone (phone only after accepted)
+  - Requester sees: traveler name, avatar, phone (phone only after accepted)
+  - Both are tappable → `/user/{uid}`
 
 ### Requests Tab (`app/(tabs)/requests.tsx`)
 - **Working:** Sent / Received tabs, pending badge count, paginated
 
 ### Messages (`app/(tabs)/messages.tsx`)
-- **Working:** Conversation list with real-time Firestore subscription
+- **Working:** Conversation list with real-time Firestore subscription, unread counts
 
 ### Chat (`app/chat/[id].tsx`)
-- **Working:** Real-time messages, send input, auto-scroll
+- **Working:** Real-time messages, send text input, auto-scroll
+- **Added:** Image messages — camera or gallery, upload to Cloudinary, fullscreen viewer, preview bar before send
+
+  - Validation: JPEG/PNG/WebP/HEIC/HEIF only, max 5 MB
+  - Display: optimized via Cloudinary transforms (600px wide, 80% quality)
+  - `lastMessage` shows "📷 Photo" for image-only messages
+  - Header shows other user's name/avatar — tappable → `/user/{uid}`
+
+### Public User Profile (`app/user/[id].tsx`) — **NEW**
+
+- **Working:** View any user's public profile
+
+  - Avatar (96×96), name, location, bio
+  - Phone number shown only to other users AND only after a request is accepted
+  - Phone tap opens device dialer via `Linking.openURL`
+  - Accessible from: chat header, trip detail (traveler), request detail (other party)
 
 ### Notifications (`app/notifications.tsx`)
 - **Working:** Paginated list, mark-as-read on tap, navigate to related item
@@ -109,9 +134,11 @@ app/
 
 ### Profile (`app/(tabs)/profile.tsx`)
 - **Working:** Name, location, rating, delivery count, links to Trips / Requests / Orders, logout
+- **Added:** Avatar displayed with Cloudinary-hosted image + tap-to-change UX on edit screen
 
 ### Edit Profile (`app/profile/edit.tsx`)
-- **Working:** Update name and location
+- **Working:** Update name, location (plain TextInput), bio, phone
+- **Added:** Avatar upload — tap avatar → image picker (gallery, 1:1 crop, 0.8 quality) → Cloudinary `avatars/` folder → URL saved to Firestore
 
 ---
 
@@ -126,22 +153,43 @@ app/
 
 ---
 
+## Image / Media — Cloudinary
+
+All media is stored on Cloudinary (not Firebase Storage).
+
+**Helper:** `cloudinary/CloudinaryHelper.ts`
+
+| Function | Purpose |
+|---|---|
+| `uploadFileToCloudinary(uri, folder?, filename?)` | Upload any file, auto-detects MIME type |
+| `getOptimizedImageUrl(url, width?, height?, quality?)` | Transform URL for display (f_auto, q_auto) |
+| `getPublicIdFromUrl(url)` | Extract public ID from Cloudinary URL |
+
+**Upload folders:**
+
+- `avatars/` — user avatars
+- `chat/{conversationId}/` — chat image messages
+- `request-photos/` — request item photos
+
+---
+
 ## Firestore — Collections & Functions
 
 ### `trips`
 ```
-{ travelerId, travelerName, travelerAvatar, travelerRating,
+{ travelerId, travelerName, travelerAvatar,   // travelerAvatar: Cloudinary URL | null
+  travelerRating, tripCode,
   from: TripLocation, to: TripLocation,
+  fromCity, toCity,                            // lowercase denormalized, for filtering
   date: "YYYY-MM-DD", capacityKg, notes,
   status: "open"|"closed", createdAt }
 ```
 Functions: `getTrips(filters?, cursor?)`, `getTripById`, `getTripsByUser`, `createTrip`, `closeTrip`
-Filters: all applied **server-side** via Firestore `where` clauses:
+Filters (server-side Firestore `where`):
 
-- `from`/`to` → `where('fromCity', '==', ...)` / `where('toCity', '==', ...)` (exact match on denormalized lowercase fields)
-- `dateFrom`/`dateTo` → `where('date', '>=', ...)` / `where('date', '<=', ...)` with `orderBy('date', 'asc')`
+- `from`/`to` → `where('fromCity', '==', ...)` / `where('toCity', '==', ...)`
+- `dateFrom`/`dateTo` → `where('date', '>=', ...)` + `where('date', '<=', ...)` with `orderBy('date', 'asc')`
 - No filters → `orderBy('createdAt', 'desc')`
-- `fromCity` and `toCity` are stored at write time in `createTrip`
 
 ### `requests`
 ```
@@ -154,14 +202,23 @@ Functions: `createRequest`, `getRequestById`, `hasExistingRequest`, `getSentRequ
 
 ### `users`
 ```
-{ name, email, location, avatarUrl, rating, deliveryCount, createdAt }
+{ name, email, location, avatarUrl,            // avatarUrl: Cloudinary URL | null
+  phone?, bio?,
+  rating, deliveryCount, createdAt }
 ```
 Functions: `getUserProfile`, `updateUserProfile`, `uploadAvatar`
 
 ### `conversations`
 ```
 { tripId, requestId, participants: [uid1, uid2],
-  lastMessage, lastMessageAt, participantNames }
+  participantNames: { [uid]: name },
+  lastMessage, lastMessageAt,
+  unreadCounts: { [uid]: number } }
+```
+Sub-collection `messages`:
+```
+{ senderId, text, imageUrl: string | null,      // Cloudinary URL
+  createdAt }
 ```
 Functions: `getOrCreateConversation`, `getConversations`, `sendMessage`, `subscribeToMessages`, `subscribeToConversations`
 
@@ -173,6 +230,7 @@ Functions: `getOrCreateConversation`, `getConversations`, `sendMessage`, `subscr
 Functions: `getNotifications`, `markAsRead`, `createNotification`, `subscribeToNotifications`
 
 ### Firestore Indexes (deployed)
+
 - `trips`: status ASC + createdAt DESC
 - `trips`: travelerId ASC + createdAt DESC
 - `requests`: tripId ASC + createdAt DESC
@@ -186,6 +244,7 @@ Functions: `getNotifications`, `markAsRead`, `createNotification`, `subscribeToN
 ## Data Layer — Locations
 
 `data/locations.ts` — ~180 predefined cities across zones:
+
 - **tunisia** — 40+ cities (Tunis, Sfax, Sousse, Bizerte, etc.)
 - **europe** — France, Germany, Belgium, Italy, Switzerland, UK, Spain, Netherlands, Turkey
 - **north_america** — Canada, USA
@@ -205,6 +264,7 @@ LocationPicker groups by zone, shows user's nearest city first, recent selection
 3. Both rules enforced at:
    - **Creation** (Alert in `create.tsx`)
    - **Feed** (`isValidRoute` filter in `getTrips`)
+4. **Phone visibility:** Phone numbers only shown between two parties after request is accepted (not in pending/rejected state)
 
 ---
 
@@ -227,13 +287,13 @@ NDK 27 (LLVM 18) broke C++ ABI linkage for all Expo native modules.
 | Area | Issue |
 |---|---|
 | Home search | Date filter is client-side only — with large datasets, pages could be filtered to 0 results while more data exists |
-| Pagination | `hasMore` is based on `docs.length === PAGE_SIZE` — if filtered results are fewer, pagination stops correctly but may miss edge cases |
+| Pagination | `hasMore` is based on `docs.length === PAGE_SIZE` — edge cases possible |
 | Notifications | No push notifications (only in-app) — Firebase Cloud Messaging not integrated |
-| Images | `createRequest` has photo upload field in type but UI may not expose it on all screens |
 | Ratings | `travelerRating` defaults to 0 on create — no rating flow exists yet |
 | Status flow | `bought` and `delivered` statuses exist in types but no UI action triggers them |
 | `post.tsx` | Just a redirect — could be removed if FAB in tab layout directly calls router.push |
-| Edit profile | Location field is a plain TextInput, not using LocationPicker |
+| Edit profile | Location field is still a plain TextInput, not using LocationPicker |
+| Cloudinary delete | `deleteFileFromCloudinary` is a placeholder — requires a backend/Cloud Function to execute |
 
 ---
 
@@ -248,13 +308,13 @@ NDK 27 (LLVM 18) broke C++ ABI linkage for all Expo native modules.
 - [ ] TripCard could show a cleaner route display (city → city with flags)
 - [ ] Request status bar in detail screen needs color-coded steps
 - [ ] Empty states could be more visual (illustrations)
-- [ ] Profile screen avatar upload is wired but needs a tap-to-change UX
 
 ### Missing Features
 - [ ] Push notifications (FCM)
 - [ ] Rating system (after delivery completed)
 - [ ] `bought` / `delivered` status update actions (traveler marks item as bought, then delivered)
-- [ ] Photo upload in create request UI
-- [ ] Trip detail shows list of incoming requests (for traveler)
+- [ ] Photo upload in create request UI (field exists in type, not yet exposed in UI)
+- [ ] Trip detail shows list of incoming requests (for traveler view)
 - [ ] Traveler earnings summary on profile
-- [ ] Deep linking for notification taps (already partially handled by routing in notifications.tsx)
+- [ ] Deep linking for notification taps (partially handled in notifications.tsx)
+- [ ] Cloudinary image deletion (needs backend — Cloud Function or signed delete)

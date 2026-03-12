@@ -1,5 +1,3 @@
-import withFirebaseAppDelegate from "./plugins/with-firebase-appdelegate";
-
 export default {
   expo: {
     name: "Jibo",
@@ -15,22 +13,22 @@ export default {
       bundleIdentifier: "com.jibo.app",
       googleServicesFile: "./GoogleService-Info.plist",
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false
-      }
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: "com.jibo.app",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         backgroundColor: "#ffffff",
-        foregroundImage: "./assets/Jibli/LogoJibliPNG.png"
+        foregroundImage: "./assets/Jibli/LogoJibliPNG.png",
       },
       edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false
+      predictiveBackGestureEnabled: false,
     },
     web: {
       output: "static",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
     },
     plugins: [
       "expo-router",
@@ -42,34 +40,34 @@ export default {
           resizeMode: "contain",
           backgroundColor: "#ffffff",
           dark: {
-            backgroundColor: "#000000"
-          }
-        }
+            backgroundColor: "#000000",
+          },
+        },
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      withFirebaseAppDelegate,
+      //withFirebaseAppDelegate,
       // withModularHeaders,
       [
         "expo-build-properties",
         {
           ios: {
-            useFrameworks: "dynamic",
+            useFrameworks: "static",
+            buildReactNativeFromSource: true,
             deploymentTarget: "15.1",
-           
-          }
-        }
-      ]
+          },
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
-      reactCompiler: true
+      reactCompiler: true,
     },
     extra: {
       router: {},
       eas: {
-        projectId: "3f4a318d-bf58-44d7-920d-5fd3ba5b97cd"
-      }
-    }
-  }
+        projectId: "3f4a318d-bf58-44d7-920d-5fd3ba5b97cd",
+      },
+    },
+  },
 };

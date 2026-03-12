@@ -87,16 +87,22 @@ export async function sendMessage(
   });
 
   const convRef = firestore().collection('conversations').doc(conversationId);
-  batch.update(convRef, {
+  const updateData: any = {
     lastMessage: text || (imageUrl ? '📷 Photo' : ''),
     lastMessageAt: firestore.FieldValue.serverTimestamp(),
-    [`unreadCounts.${recipientId}`]: firestore.FieldValue.increment(1),
-  });
+  };
+
+  if (recipientId) {
+    updateData[`unreadCounts.${recipientId}`] = firestore.FieldValue.increment(1);
+  }
+
+  batch.update(convRef, updateData);
 
   await batch.commit();
 }
 
 export async function markConversationRead(conversationId: string, uid: string): Promise<void> {
+  if (!uid) return;
   await firestore()
     .collection('conversations')
     .doc(conversationId)

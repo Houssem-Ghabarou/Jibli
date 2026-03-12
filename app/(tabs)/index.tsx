@@ -75,6 +75,7 @@ export default function HomeScreen() {
     dFrom?: string | null,
     dTo?: string | null,
   ) {
+    if (!user) return;
     try {
       const result = await getTrips({
         from,
@@ -94,7 +95,7 @@ export default function HomeScreen() {
   }
 
   async function loadMore() {
-    if (!hasMore || loadingMore || !cursor) return;
+    if (!user || !hasMore || loadingMore || !cursor) return;
     setLoadingMore(true);
     try {
       const result = await getTrips(
@@ -129,11 +130,13 @@ export default function HomeScreen() {
   );
 
   function onRefresh() {
+    if (!user) return;
     setRefreshing(true);
     fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
   }
 
   function onSearch() {
+    if (!user) return;
     setLoading(true);
     fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
   }

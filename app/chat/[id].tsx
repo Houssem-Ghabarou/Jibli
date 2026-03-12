@@ -41,6 +41,7 @@ export default function ChatScreen() {
   const [otherName, setOtherName] = useState('Chat');
   const [otherUid, setOtherUid] = useState('');
   const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
+  const [convLoaded, setConvLoaded] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const { bottom, top } = useSafeAreaInsets();
 
@@ -77,6 +78,7 @@ export default function ChatScreen() {
           if (p?.avatarUrl) setOtherAvatar(p.avatarUrl);
         });
       }
+      setConvLoaded(true);
     });
     const unsub = subscribeToMessages(id, msgs => {
       setMessages(msgs);
@@ -216,22 +218,31 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.headerLeft}
-          onPress={() => router.push(`/user/${otherUid}` as any)}
-        >
-          <View style={styles.headerAvatar}>
-            {otherAvatar ? (
-              <Image source={{ uri: otherAvatar }} style={styles.headerAvatarImage} />
-            ) : (
-              <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
-            )}
+        {convLoaded ? (
+          <TouchableOpacity
+            style={styles.headerLeft}
+            onPress={() => {
+              if (otherUid) router.push(`/user/${otherUid}` as any);
+            }}
+            disabled={!otherUid}
+          >
+            <View style={styles.headerAvatar}>
+              {otherAvatar ? (
+                <Image source={{ uri: otherAvatar }} style={styles.headerAvatarImage} />
+              ) : (
+                <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+              )}
+            </View>
+            <Text style={styles.headerTitle}>{otherName}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerLeft}>
+            <ActivityIndicator color={Colors.white} size="small" />
           </View>
-          <Text style={styles.headerTitle}>{otherName}</Text>
-        </TouchableOpacity>
+        )}
       </View>
 
-      {loading ? (
+      {(loading || !convLoaded) ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
