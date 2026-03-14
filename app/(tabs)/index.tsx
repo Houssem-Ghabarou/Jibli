@@ -377,7 +377,7 @@ export default function HomeScreen() {
             }
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
+                <Ionicons name="navigate-outline" size={48} color={Colors.textMuted} />
                 <Text style={styles.emptyText}>No trips found</Text>
                 <Text style={styles.emptySubtext}>Be the first to post a trip!</Text>
               </View>

@@ -108,7 +108,7 @@ export default function ProfileScreen() {
       {/* Actions */}
       <View style={styles.section}>
         <ActionRow
-          icon="airplane-outline"
+          icon="navigate-outline"
           label="My Trips"
           onPress={() => router.push('/(tabs)/trips')}
         />

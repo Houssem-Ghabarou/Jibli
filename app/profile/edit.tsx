@@ -19,6 +19,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useKeyboard } from '@/hooks/useKeyboard';
+import { useScrollToFocusedInput } from '@/hooks/useScrollToFocusedInput';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_HEIGHT } from '@/components/ui/KeyboardDoneBar';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
@@ -31,6 +34,8 @@ export default function EditProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { keyboardHeight, isKeyboardVisible, dismiss } = useKeyboard();
+  const { scrollRef, registerField } = useScrollToFocusedInput(keyboardHeight);
 
   useEffect(() => {
     if (!user) return;
@@ -111,7 +116,8 @@ export default function EditProfileScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -121,7 +127,15 @@ export default function EditProfileScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[
+          styles.form,
+          { paddingBottom: 16 + keyboardHeight + (isKeyboardVisible ? KEYBOARD_DONE_BAR_HEIGHT : 0) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <TouchableOpacity style={styles.avatar} onPress={pickImage} activeOpacity={0.8}>
@@ -137,7 +151,7 @@ export default function EditProfileScreen() {
           <Text style={styles.avatarHint}>Tap to change photo</Text>
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(0)}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput
             style={styles.input}
@@ -146,6 +160,7 @@ export default function EditProfileScreen() {
             placeholder="Your name"
             placeholderTextColor={Colors.textMuted}
             autoComplete="name"
+            onFocus={registerField(0).onFocus}
           />
         </View>
 
@@ -160,7 +175,7 @@ export default function EditProfileScreen() {
           />
         </View> */}
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(1)}>
           <Text style={styles.label}>Phone Number (optional)</Text>
           <TextInput
             style={styles.input}
@@ -170,10 +185,11 @@ export default function EditProfileScreen() {
             placeholderTextColor={Colors.textMuted}
             keyboardType="phone-pad"
             autoComplete="tel"
+            onFocus={registerField(1).onFocus}
           />
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(2)}>
           <Text style={styles.label}>Bio (optional)</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
@@ -183,6 +199,7 @@ export default function EditProfileScreen() {
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={4}
+            onFocus={registerField(2).onFocus}
           />
         </View>
 
@@ -198,6 +215,11 @@ export default function EditProfileScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <KeyboardDoneBar
+        visible={isKeyboardVisible}
+        keyboardHeight={keyboardHeight}
+        onDone={dismiss}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -223,9 +245,11 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
     color: Colors.textPrimary,
+    textAlign: 'center',
   },
   form: {
     padding: 20,

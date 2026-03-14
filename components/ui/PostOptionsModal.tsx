@@ -37,7 +37,7 @@ export default function PostOptionsModal({ isVisible, onClose, onOptionSelect }:
               activeOpacity={0.7}
             >
               <View style={[styles.iconWrapper, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="airplane" size={32} color="#1976D2" />
+                <Ionicons name="navigate" size={32} color="#1976D2" />
               </View>
               <View style={styles.optionInfo}>
                 <Text style={styles.optionLabel}>Post a Trip</Text>

@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#5B6AB0',
+    backgroundColor: Colors.request,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5B6AB0',
+    color: Colors.request,
   },
   offeredBadge: {
     backgroundColor: '#E8F8F0',
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   arrow: {
-    color: '#5B6AB0',
+    color: Colors.request,
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     color: Colors.success,
   },
   ctaButton: {
-    backgroundColor: '#5B6AB0',
+    backgroundColor: Colors.request,
     paddingVertical: 12,
     borderRadius: 24,
     alignItems: 'center',

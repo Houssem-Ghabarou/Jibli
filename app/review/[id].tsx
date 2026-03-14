@@ -12,6 +12,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useKeyboard } from '@/hooks/useKeyboard';
+import { useScrollToFocusedInput } from '@/hooks/useScrollToFocusedInput';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_HEIGHT } from '@/components/ui/KeyboardDoneBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -33,6 +36,8 @@ export default function ReviewScreen() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [travelerAvatar, setTravelerAvatar] = useState<string | null>(null);
+  const { keyboardHeight, isKeyboardVisible, dismiss } = useKeyboard();
+  const { scrollRef, registerField } = useScrollToFocusedInput(keyboardHeight);
 
   useEffect(() => {
     if (travelerId) {
@@ -83,7 +88,8 @@ export default function ReviewScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -93,7 +99,15 @@ export default function ReviewScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 16 + keyboardHeight + (isKeyboardVisible ? KEYBOARD_DONE_BAR_HEIGHT : 0) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Traveler info */}
         <View style={styles.travelerSection}>
           <View style={styles.avatar}>
@@ -131,7 +145,7 @@ export default function ReviewScreen() {
         </View>
 
         {/* Comment */}
-        <View style={styles.card}>
+        <View style={styles.card} {...registerField(0)}>
           <Text style={styles.commentLabel}>Comment (optional)</Text>
           <TextInput
             style={styles.textarea}
@@ -141,6 +155,7 @@ export default function ReviewScreen() {
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={4}
+            onFocus={registerField(0).onFocus}
           />
         </View>
 
@@ -156,6 +171,11 @@ export default function ReviewScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <KeyboardDoneBar
+        visible={isKeyboardVisible}
+        keyboardHeight={keyboardHeight}
+        onDone={dismiss}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -176,7 +196,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
+    textAlign: 'center',
     fontWeight: '700',
     color: Colors.textPrimary,
   },

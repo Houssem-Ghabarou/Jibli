@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 export const Colors = {
   accent: '#E8402A',
   accentLight: '#FF6B4A',
+  /** Request blue — used in feed request cards, Post a Request, request details */
+  request: '#5B6AB0',
   background: '#FFFFFF',
   surface: '#F8F8F8',
   border: '#F0F0F0',

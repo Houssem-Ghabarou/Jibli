@@ -2,6 +2,7 @@ import { Colors } from '@/constants/theme';
 import { getFlag } from '@/data/locations';
 import { Trip } from '@/lib/firestore/trips';
 import { getUserProfile } from '@/lib/firestore/users';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -73,7 +74,9 @@ export default function TripCard({ trip, isRequested }: Props) {
           <Text style={styles.city}>{locFlag(trip.from)} {locName(trip.from)}</Text>
           {locArea(trip.from) ? <Text style={styles.area}>{locArea(trip.from)}</Text> : null}
         </View>
-        <Text style={styles.arrow}>✈</Text>
+        <View style={styles.arrowWrap}>
+          <Ionicons name="navigate" size={18} color={Colors.accent} />
+        </View>
         <View style={[styles.cityBlock, styles.cityBlockRight]}>
           <Text style={styles.city}>{locFlag(trip.to)} {locName(trip.to)}</Text>
           {locArea(trip.to) ? <Text style={[styles.area, { textAlign: 'right' }]}>{locArea(trip.to)}</Text> : null}
@@ -208,10 +211,9 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 1,
   },
-  arrow: {
-    color: Colors.accent,
-    fontSize: 16,
-    textAlign: 'center',
+  arrowWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   metaRow: {
     flexDirection: 'row',

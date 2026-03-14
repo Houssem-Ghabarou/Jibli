@@ -182,7 +182,7 @@ export default function RequestDetailScreen() {
               <View style={{ flex: 1, gap: 8 }}>
                 <View style={styles.routeRow}>
                   <View style={styles.routePoint}>
-                    <Ionicons name="airplane-outline" size={18} color={Colors.accent} />
+                    <Ionicons name="navigate-outline" size={18} color={Colors.accent} />
                     <Text style={styles.routeCity}>
                       {typeof trip.from === 'string' ? trip.from : (trip.from?.city_name ?? '')}
                     </Text>
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { fontSize: 16, color: Colors.textSecondary },
   header: {
-    backgroundColor: Colors.headerDark,
+    backgroundColor: Colors.request,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -419,11 +419,11 @@ const styles = StyleSheet.create({
   declineBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
   acceptBtn: {
     flex: 1, paddingVertical: 14, borderRadius: 24,
-    alignItems: 'center', backgroundColor: Colors.success,
+    alignItems: 'center', backgroundColor: Colors.request,
   },
   acceptBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
   chatBtn: {
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.request,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, paddingVertical: 15, borderRadius: 24,
   },

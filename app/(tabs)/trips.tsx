@@ -89,7 +89,7 @@ export default function TripsScreen() {
           ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
+              <Ionicons name="navigate-outline" size={48} color={Colors.textMuted} />
               <Text style={styles.emptyText}>No trips yet</Text>
               <Text style={styles.emptySubtext}>Post your first trip</Text>
               <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/trip/create')}>

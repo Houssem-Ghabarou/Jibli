@@ -24,9 +24,8 @@ export type PostOptionsBottomSheetRef = {
 
 const SNAP_POINTS = ['48%'];
 
-const TRIP_ICON_COLOR = '#0A84FF';
-const TRIP_BG = '#E8F4FD';
-const REQUEST_BG = '#FFF2F0';
+const TRIP_BG = '#FFEBE8';      // accent-tinted (trip)
+const REQUEST_BG = '#EEF0FF';   // request blue tint (request)
 
 const PostOptionsBottomSheet = forwardRef<PostOptionsBottomSheetRef, Props>(
   function PostOptionsBottomSheet({ onClose, onOptionSelect }, ref) {
@@ -86,7 +85,7 @@ const PostOptionsBottomSheet = forwardRef<PostOptionsBottomSheetRef, Props>(
               activeOpacity={0.75}
             >
               <View style={[styles.tileIconWrap, { backgroundColor: TRIP_BG }]}>
-                <Ionicons name="airplane" size={36} color={TRIP_ICON_COLOR} />
+                <Ionicons name="navigate" size={36} color={Colors.accent} />
               </View>
               <Text style={styles.tileLabel}>Post a Trip</Text>
               <Text style={styles.tileSublabel}>Share your journey</Text>
@@ -98,7 +97,7 @@ const PostOptionsBottomSheet = forwardRef<PostOptionsBottomSheetRef, Props>(
               activeOpacity={0.75}
             >
               <View style={[styles.tileIconWrap, { backgroundColor: REQUEST_BG }]}>
-                <Ionicons name="bag-handle" size={36} color={Colors.accent} />
+                <Ionicons name="bag-handle" size={36} color={Colors.request} />
               </View>
               <Text style={styles.tileLabel}>Post a Request</Text>
               <Text style={styles.tileSublabel}>Ask a traveler</Text>

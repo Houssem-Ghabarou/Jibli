@@ -10,6 +10,9 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useKeyboard } from '@/hooks/useKeyboard';
+import { useScrollToFocusedInput } from '@/hooks/useScrollToFocusedInput';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_HEIGHT } from '@/components/ui/KeyboardDoneBar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
@@ -34,6 +37,8 @@ export default function CreateRequestScreen() {
   const [weightKg, setWeightKg] = useState('');
   const [reward, setReward] = useState('');
   const [loading, setLoading] = useState(false);
+  const { keyboardHeight, isKeyboardVisible, dismiss } = useKeyboard();
+  const { scrollRef, registerField, setLayoutY } = useScrollToFocusedInput(keyboardHeight);
 
   async function handleSubmit() {
     if (!itemName.trim() || !description.trim() || !weightKg.trim() || !reward.trim()) {
@@ -88,6 +93,7 @@ export default function CreateRequestScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -97,13 +103,21 @@ export default function CreateRequestScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[
+          styles.form,
+          { paddingBottom: 16 + keyboardHeight + (isKeyboardVisible ? KEYBOARD_DONE_BAR_HEIGHT : 0) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.travelerInfo}>
           <Ionicons name="person-circle-outline" size={20} color={Colors.textSecondary} />
           <Text style={styles.travelerText}>Traveler: <Text style={styles.travelerName}>{travelerName}</Text></Text>
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(0)}>
           <Text style={styles.label}>Item Name *</Text>
           <TextInput
             style={styles.input}
@@ -111,10 +125,11 @@ export default function CreateRequestScreen() {
             onChangeText={setItemName}
             placeholder="e.g. Olive oil, Harissa, Medina shoes"
             placeholderTextColor={Colors.textMuted}
+            onFocus={registerField(0).onFocus}
           />
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(1)}>
           <Text style={styles.label}>Description *</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
@@ -124,10 +139,14 @@ export default function CreateRequestScreen() {
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={4}
+            onFocus={registerField(1).onFocus}
           />
         </View>
 
-        <View style={styles.row}>
+        <View
+          style={styles.row}
+          onLayout={(e) => setLayoutY([2, 3], e.nativeEvent.layout.y)}
+        >
           <View style={[styles.field, { flex: 1 }]}>
             <Text style={styles.label}>Weight (kg) *</Text>
             <TextInput
@@ -137,6 +156,7 @@ export default function CreateRequestScreen() {
               placeholder="e.g. 1.5"
               placeholderTextColor={Colors.textMuted}
               keyboardType="decimal-pad"
+              onFocus={registerField(2).onFocus}
             />
           </View>
           <View style={[styles.field, { flex: 1 }]}>
@@ -148,6 +168,7 @@ export default function CreateRequestScreen() {
               placeholder="e.g. 50"
               placeholderTextColor={Colors.textMuted}
               keyboardType="decimal-pad"
+              onFocus={registerField(3).onFocus}
             />
           </View>
         </View>
@@ -171,6 +192,11 @@ export default function CreateRequestScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <KeyboardDoneBar
+        visible={isKeyboardVisible}
+        keyboardHeight={keyboardHeight}
+        onDone={dismiss}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -190,9 +216,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
     color: Colors.white,
+    textAlign: 'center',
   },
   form: {
     padding: 20,

@@ -100,7 +100,7 @@ export default function TripDetailScreen() {
             <Text style={styles.routeCity}>
               {locDisplay(trip.from).flag} {locDisplay(trip.from).name}
             </Text>
-            <Ionicons name="airplane" size={20} color={Colors.white} />
+            <Ionicons name="navigate" size={20} color={Colors.white} />
             <Text style={styles.routeCity}>
               {locDisplay(trip.to).flag} {locDisplay(trip.to).name}
             </Text>

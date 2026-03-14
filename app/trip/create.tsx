@@ -20,6 +20,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useKeyboard } from '@/hooks/useKeyboard';
+import { useScrollToFocusedInput } from '@/hooks/useScrollToFocusedInput';
+import KeyboardDoneBar, { KEYBOARD_DONE_BAR_HEIGHT } from '@/components/ui/KeyboardDoneBar';
 
 export default function CreateTripScreen() {
   const { user } = useAuth();
@@ -33,6 +36,8 @@ export default function CreateTripScreen() {
   const [capacityKg, setCapacityKg] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const { keyboardHeight, isKeyboardVisible, dismiss } = useKeyboard();
+  const { scrollRef, registerField } = useScrollToFocusedInput(keyboardHeight);
 
   function handlePickerSelect(result: PickerResult) {
     const sel: SelectedLocation = 'custom' in result
@@ -85,6 +90,7 @@ export default function CreateTripScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -94,7 +100,15 @@ export default function CreateTripScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[
+          styles.form,
+          { paddingBottom: 16 + keyboardHeight + (isKeyboardVisible ? KEYBOARD_DONE_BAR_HEIGHT : 0) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <LocationField
           label="From *"
           value={fromLocation}
@@ -130,7 +144,7 @@ export default function CreateTripScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(0)}>
           <Text style={styles.label}>Available Capacity (kg) *</Text>
           <TextInput
             style={styles.input}
@@ -139,10 +153,11 @@ export default function CreateTripScreen() {
             placeholder="e.g. 5"
             placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad"
+            onFocus={registerField(0).onFocus}
           />
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...registerField(1)}>
           <Text style={styles.label}>Notes (optional)</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
@@ -152,6 +167,7 @@ export default function CreateTripScreen() {
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={4}
+            onFocus={registerField(1).onFocus}
           />
         </View>
 
@@ -183,6 +199,11 @@ export default function CreateTripScreen() {
         </TouchableOpacity>
       </ScrollView>
 
+      <KeyboardDoneBar
+        visible={isKeyboardVisible}
+        keyboardHeight={keyboardHeight}
+        onDone={dismiss}
+      />
       <LocationPicker
         visible={pickerFor !== null}
         onClose={() => setPickerFor(null)}
@@ -219,9 +240,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
     color: Colors.white,
+    textAlign: 'center',
   },
   form: {
     padding: 20,

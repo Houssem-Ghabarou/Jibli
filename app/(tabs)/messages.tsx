@@ -137,7 +137,7 @@ export default function MessagesScreen() {
             <View style={styles.metaRow}>
               {trip && (
                 <View style={styles.routeChip}>
-                  <Ionicons name="airplane-outline" size={11} color={Colors.accent} />
+                  <Ionicons name="navigate-outline" size={11} color={Colors.accent} />
                   <Text style={styles.routeChipText}>{trip.from} → {trip.to}</Text>
                 </View>
               )}
