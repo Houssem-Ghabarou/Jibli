@@ -1,8 +1,17 @@
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
-import storage from '@react-native-firebase/storage';
-import { Paginated } from './trips';
+import firestore, {
+  FirebaseFirestoreTypes,
+} from "@react-native-firebase/firestore";
+import storage from "@react-native-firebase/storage";
+import { Paginated } from "./trips";
 
-export type RequestStatus = 'pending' | 'accepted' | 'rejected' | 'bought' | 'delivered' | 'completed' | 'cancelled';
+export type RequestStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "bought"
+  | "delivered"
+  | "completed"
+  | "cancelled";
 
 export interface Request {
   id: string;
@@ -45,42 +54,50 @@ export async function createRequest(data: CreateRequestData): Promise<string> {
   }
 
   const { photoUri, ...rest } = data;
-  const docRef = await firestore().collection('requests').add({
-    ...rest,
-    photoUrl,
-    status: 'pending',
-    createdAt: firestore.FieldValue.serverTimestamp(),
-  });
+  const docRef = await firestore()
+    .collection("requests")
+    .add({
+      ...rest,
+      photoUrl,
+      status: "pending",
+      createdAt: firestore.FieldValue.serverTimestamp(),
+    });
 
   return docRef.id;
 }
 
 export async function getRequestById(id: string): Promise<Request | null> {
-  const doc = await firestore().collection('requests').doc(id).get();
+  const doc = await firestore().collection("requests").doc(id).get();
   if (!doc.exists) return null;
   return { id: doc.id, ...doc.data() } as Request;
 }
 
-export async function hasExistingRequest(tripId: string, requesterId: string): Promise<boolean> {
+export async function hasExistingRequest(
+  tripId: string,
+  requesterId: string,
+): Promise<boolean> {
   const snapshot = await firestore()
-    .collection('requests')
-    .where('tripId', '==', tripId)
-    .where('requesterId', '==', requesterId)
+    .collection("requests")
+    .where("tripId", "==", tripId)
+    .where("requesterId", "==", requesterId)
     .get();
   // Exclude cancelled and rejected requests — user can request again
   return snapshot.docs.some((doc: any) => {
     const status = doc.data().status;
-    return status !== 'cancelled' && status !== 'rejected';
+    return status !== "cancelled" && status !== "rejected";
   });
 }
 
 export async function getRequestsByTrip(tripId: string): Promise<Request[]> {
   const snapshot = await firestore()
-    .collection('requests')
-    .where('tripId', '==', tripId)
-    .orderBy('createdAt', 'desc')
+    .collection("requests")
+    .where("tripId", "==", tripId)
+    .orderBy("createdAt", "desc")
     .get();
-  return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Request[];
+  return snapshot.docs.map((doc: any) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Request[];
 }
 
 export async function getSentRequests(
@@ -88,9 +105,9 @@ export async function getSentRequests(
   cursor?: FirebaseFirestoreTypes.QueryDocumentSnapshot | null,
 ): Promise<Paginated<Request>> {
   let query = firestore()
-    .collection('requests')
-    .where('requesterId', '==', requesterId)
-    .orderBy('createdAt', 'desc')
+    .collection("requests")
+    .where("requesterId", "==", requesterId)
+    .orderBy("createdAt", "desc")
     .limit(PAGE_SIZE);
 
   if (cursor) query = query.startAfter(cursor) as any;
@@ -110,9 +127,9 @@ export async function getReceivedRequests(
   cursor?: FirebaseFirestoreTypes.QueryDocumentSnapshot | null,
 ): Promise<Paginated<Request>> {
   let query = firestore()
-    .collection('requests')
-    .where('travelerId', '==', travelerId)
-    .orderBy('createdAt', 'desc')
+    .collection("requests")
+    .where("travelerId", "==", travelerId)
+    .orderBy("createdAt", "desc")
     .limit(PAGE_SIZE);
 
   if (cursor) query = query.startAfter(cursor) as any;
@@ -127,20 +144,67 @@ export async function getReceivedRequests(
   };
 }
 
-export async function updateRequestStatus(id: string, status: RequestStatus): Promise<void> {
-  await firestore().collection('requests').doc(id).update({ status });
+export async function updateRequestStatus(
+  id: string,
+  status: RequestStatus,
+): Promise<void> {
+  await firestore().collection("requests").doc(id).update({ status });
+}
+
+export function subscribeToSentRequests(
+  requesterId: string,
+  onData: (requests: Request[], snapshot: FirebaseFirestoreTypes.QuerySnapshot) => void,
+  onError?: (err: Error) => void,
+): () => void {
+  return firestore()
+    .collection("requests")
+    .where("requesterId", "==", requesterId)
+    .orderBy("createdAt", "desc")
+    .limit(PAGE_SIZE)
+    .onSnapshot((snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
+      onData(
+        snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Request[],
+        snapshot
+      );
+    }, onError);
+}
+
+export function subscribeToReceivedRequests(
+  travelerId: string,
+  onData: (requests: Request[], snapshot: FirebaseFirestoreTypes.QuerySnapshot) => void,
+  onError?: (err: Error) => void,
+): () => void {
+  return firestore()
+    .collection("requests")
+    .where("travelerId", "==", travelerId)
+    .orderBy("createdAt", "desc")
+    .limit(PAGE_SIZE)
+    .onSnapshot((snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
+      onData(
+        snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Request[],
+        snapshot
+      );
+    }, onError);
 }
 
 /** Returns a Set of tripIds the user has active (non-cancelled/rejected) requests on. */
-export async function getMyRequestedTripIds(requesterId: string): Promise<Set<string>> {
+export async function getMyRequestedTripIds(
+  requesterId: string,
+): Promise<Set<string>> {
   const snapshot = await firestore()
-    .collection('requests')
-    .where('requesterId', '==', requesterId)
+    .collection("requests")
+    .where("requesterId", "==", requesterId)
     .get();
   const activeIds = snapshot.docs
     .filter((doc: any) => {
       const status = doc.data().status;
-      return status !== 'cancelled' && status !== 'rejected';
+      return status !== "cancelled" && status !== "rejected";
     })
     .map((doc: any) => doc.data().tripId as string);
   return new Set(activeIds);

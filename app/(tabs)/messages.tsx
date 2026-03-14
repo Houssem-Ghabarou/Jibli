@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeToConversations, Conversation } from '@/lib/firestore/conversations';
+import { getOpenRequestById } from '@/lib/firestore/openRequests';
 import { getRequestById } from '@/lib/firestore/requests';
 import { getTripById, Trip } from '@/lib/firestore/trips';
 import { getUserProfile } from '@/lib/firestore/users';
@@ -41,21 +42,40 @@ export default function MessagesScreen() {
           setAvatars(prev => ({ ...prev, ...updates }));
         });
       }
-      // Fetch trip metadata
+      // Fetch trip/open-request metadata
       const newTripIds = convs.map(c => c.tripId).filter(tid => tid && !(tid in tripMeta));
       const uniqueTripIds = [...new Set(newTripIds)];
       if (uniqueTripIds.length > 0) {
         Promise.all(uniqueTripIds.map(tid => getTripById(tid))).then(trips => {
-          const updates: Record<string, { from: string; to: string; tripCode?: string }> = {};
+          const routeUpdates: Record<string, { from: string; to: string; tripCode?: string }> = {};
+          const openReqIds: string[] = [];
           uniqueTripIds.forEach((tid, i) => {
             const t = trips[i];
             if (t) {
-              const from = typeof t.from === 'string' ? t.from : t.from.city_name;
-              const to = typeof t.to === 'string' ? t.to : t.to.city_name;
-              updates[tid] = { from, to, tripCode: t.tripCode };
+              const from = typeof t.from === 'string' ? t.from : (t.from?.city_name ?? '');
+              const to = typeof t.to === 'string' ? t.to : (t.to?.city_name ?? '');
+              routeUpdates[tid] = { from, to, tripCode: t.tripCode };
+            } else {
+              openReqIds.push(tid);
             }
           });
-          setTripMeta(prev => ({ ...prev, ...updates }));
+          if (Object.keys(routeUpdates).length > 0) setTripMeta(prev => ({ ...prev, ...routeUpdates }));
+          // Unresolved IDs might be open_request IDs
+          if (openReqIds.length > 0) {
+            Promise.all(openReqIds.map(id => getOpenRequestById(id))).then(ors => {
+              const orRouteUpdates: Record<string, { from: string; to: string }> = {};
+              const nameUpdates: Record<string, string> = {};
+              openReqIds.forEach((id, i) => {
+                const or = ors[i];
+                if (or) {
+                  orRouteUpdates[id] = { from: or.from.city_name, to: or.to.city_name };
+                  nameUpdates[id] = or.itemName;
+                }
+              });
+              if (Object.keys(orRouteUpdates).length > 0) setTripMeta(prev => ({ ...prev, ...orRouteUpdates }));
+              if (Object.keys(nameUpdates).length > 0) setItemNames(prev => ({ ...prev, ...nameUpdates }));
+            });
+          }
         });
       }
       // Fetch item names from requests
@@ -91,7 +111,7 @@ export default function MessagesScreen() {
     const otherName = item.participantNames?.[otherUid] ?? 'Unknown';
     const unread = item.unreadCounts?.[user?.uid ?? ''] ?? 0;
     const trip = tripMeta[item.tripId];
-    const itemName = itemNames[item.requestId];
+    const itemName = itemNames[item.requestId] ?? itemNames[item.tripId];
 
     return (
       <TouchableOpacity

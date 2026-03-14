@@ -2,13 +2,20 @@ import DatePickerModal, {
   formatDateDisplay,
 } from "@/components/DatePickerModal";
 import LocationPicker, { PickerResult } from "@/components/LocationPicker";
+import OpenRequestCard from "@/components/OpenRequestCard";
 import TripCard from "@/components/TripCard";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationsContext";
+import { useUI } from "@/context/UIContext";
 import { getFlag } from "@/data/locations";
+import {
+  getMyOfferedOpenRequestIds,
+  OpenRequest,
+  subscribeToOpenRequests,
+} from "@/lib/firestore/openRequests";
 import { getMyRequestedTripIds } from "@/lib/firestore/requests";
-import { getTrips, Trip } from "@/lib/firestore/trips";
+import { subscribeToTrips, Trip } from "@/lib/firestore/trips";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,7 +28,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useUI } from "@/context/UIContext";
 
 interface SearchLocation {
   city_name: string;
@@ -33,16 +39,20 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useUI();
+
+  const [feedMode, setFeedMode] = useState<"all" | "trips" | "requests">("all");
+
+  // Trips feed state
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [cursor, setCursor] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(false);
+  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(new Set());
 
-  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(
-    new Set(),
-  );
+  // Open requests feed state
+  const [openRequests, setOpenRequests] = useState<OpenRequest[]>([]);
+  const [orLoading, setOrLoading] = useState(true);
+  const [orRefreshing, setOrRefreshing] = useState(false);
+  const [offeredRequestIds, setOfferedRequestIds] = useState<Set<string>>(new Set());
 
   const [fromFilter, setFromFilter] = useState<SearchLocation | null>(null);
   const [toFilter, setToFilter] = useState<SearchLocation | null>(null);
@@ -51,73 +61,45 @@ export default function HomeScreen() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<"from" | "to" | null>(null);
 
+  // Listener unsubscribe refs
+  const tripsUnsubRef = useRef<(() => void) | null>(null);
+  const orUnsubRef = useRef<(() => void) | null>(null);
+
   // Refs so useFocusEffect always reads the latest filter values
   const fromFilterRef = useRef(fromFilter);
   const toFilterRef = useRef(toFilter);
   const dateFromRef = useRef(dateFrom);
   const dateToRef = useRef(dateTo);
-  useEffect(() => {
-    fromFilterRef.current = fromFilter;
-  }, [fromFilter]);
-  useEffect(() => {
-    toFilterRef.current = toFilter;
-  }, [toFilter]);
-  useEffect(() => {
-    dateFromRef.current = dateFrom;
-  }, [dateFrom]);
-  useEffect(() => {
-    dateToRef.current = dateTo;
-  }, [dateTo]);
+  useEffect(() => { fromFilterRef.current = fromFilter; }, [fromFilter]);
+  useEffect(() => { toFilterRef.current = toFilter; }, [toFilter]);
+  useEffect(() => { dateFromRef.current = dateFrom; }, [dateFrom]);
+  useEffect(() => { dateToRef.current = dateTo; }, [dateTo]);
 
-  async function fetchTrips(
-    from?: string,
-    to?: string,
-    dFrom?: string | null,
-    dTo?: string | null,
-  ) {
+  function subscribeTrips(from?: string, to?: string, dFrom?: string | null, dTo?: string | null) {
+    tripsUnsubRef.current?.();
     if (!user) return;
-    try {
-      const result = await getTrips({
-        from,
-        to,
-        dateFrom: dFrom ?? undefined,
-        dateTo: dTo ?? undefined,
-      });
-      setTrips(result.data);
-      setCursor(result.lastDoc);
-      setHasMore(result.hasMore);
-    } catch (err: any) {
-      showToast(err.message || "Failed to load trips", "error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    setLoading(true);
+    tripsUnsubRef.current = subscribeToTrips(
+      { from, to, dateFrom: dFrom ?? undefined, dateTo: dTo ?? undefined },
+      (data) => { setTrips(data); setLoading(false); setRefreshing(false); },
+      (err: any) => { showToast(err.message || "Failed to load trips", "error"); setLoading(false); setRefreshing(false); },
+    );
   }
 
-  async function loadMore() {
-    if (!user || !hasMore || loadingMore || !cursor) return;
-    setLoadingMore(true);
-    try {
-      const result = await getTrips(
-        {
-          from: fromFilter?.city_name,
-          to: toFilter?.city_name,
-          dateFrom: dateFrom ?? undefined,
-          dateTo: dateTo ?? undefined,
-        },
-        cursor,
-      );
-      setTrips((prev) => [...prev, ...result.data]);
-      setCursor(result.lastDoc);
-      setHasMore(result.hasMore);
-    } finally {
-      setLoadingMore(false);
-    }
+  function subscribeOpenReqs(from?: string, to?: string) {
+    orUnsubRef.current?.();
+    if (!user) return;
+    setOrLoading(true);
+    orUnsubRef.current = subscribeToOpenRequests(
+      { from, to },
+      (data) => { setOpenRequests(data); setOrLoading(false); setOrRefreshing(false); },
+      (err: any) => { showToast(err.message || "Failed to load requests", "error"); setOrLoading(false); setOrRefreshing(false); },
+    );
   }
 
   useFocusEffect(
     useCallback(() => {
-      fetchTrips(
+      subscribeTrips(
         fromFilterRef.current?.city_name,
         toFilterRef.current?.city_name,
         dateFromRef.current,
@@ -125,20 +107,36 @@ export default function HomeScreen() {
       );
       if (user) {
         getMyRequestedTripIds(user.uid).then(setRequestedTripIds);
+        subscribeOpenReqs(fromFilterRef.current?.city_name, toFilterRef.current?.city_name);
+        getMyOfferedOpenRequestIds(user.uid).then(setOfferedRequestIds);
       }
+      return () => {
+        tripsUnsubRef.current?.();
+        orUnsubRef.current?.();
+      };
     }, [user]),
   );
 
   function onRefresh() {
     if (!user) return;
     setRefreshing(true);
-    fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+    subscribeTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+  }
+
+  function onRefreshRequests() {
+    if (!user) return;
+    setOrRefreshing(true);
+    subscribeOpenReqs(fromFilter?.city_name, toFilter?.city_name);
   }
 
   function onSearch() {
     if (!user) return;
-    setLoading(true);
-    fetchTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+    if (feedMode === "trips" || feedMode === "all") {
+      subscribeTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
+    }
+    if (feedMode === "requests" || feedMode === "all") {
+      subscribeOpenReqs(fromFilter?.city_name, toFilter?.city_name);
+    }
   }
 
   function handlePickerSelect(result: PickerResult) {
@@ -253,37 +251,36 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Date filter row */}
+        {/* Date filter — always visible */}
         <View style={styles.dateRow}>
           <TouchableOpacity
-            style={[styles.dateChip, hasDateFilter && styles.dateChipActive]}
-            onPress={() => setDatePickerOpen(true)}
+            style={[
+              styles.dateChip,
+              hasDateFilter && styles.dateChipActive,
+              feedMode === "requests" && styles.dateChipDisabled,
+            ]}
+            onPress={() => feedMode !== "requests" && setDatePickerOpen(true)}
+            activeOpacity={feedMode !== "requests" ? 0.7 : 1}
           >
             <Ionicons
               name="calendar-outline"
               size={14}
-              color={hasDateFilter ? Colors.accent : "rgba(255,255,255,0.7)"}
+              color={hasDateFilter && feedMode !== "requests" ? Colors.accent : "rgba(255,255,255,0.7)"}
             />
             <Text
               style={[
                 styles.dateChipText,
-                hasDateFilter && styles.dateChipTextActive,
+                hasDateFilter && feedMode !== "requests" && styles.dateChipTextActive,
               ]}
             >
               {dateLabel}
             </Text>
-            {hasDateFilter && (
+            {hasDateFilter && feedMode !== "requests" && (
               <TouchableOpacity
                 onPress={() => {
                   setDateFrom(null);
                   setDateTo(null);
-                  setLoading(true);
-                  fetchTrips(
-                    fromFilter?.city_name,
-                    toFilter?.city_name,
-                    null,
-                    null,
-                  );
+                  subscribeTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
                 }}
               >
                 <Ionicons name="close-circle-outline" size={16} color={Colors.accent} />
@@ -291,52 +288,127 @@ export default function HomeScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Feed mode toggle */}
+        <View style={styles.toggle}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, feedMode === "all" && styles.toggleBtnActive]}
+            onPress={() => setFeedMode("all")}
+          >
+            <Text style={[styles.toggleText, feedMode === "all" && styles.toggleTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, feedMode === "trips" && styles.toggleBtnActive]}
+            onPress={() => setFeedMode("trips")}
+          >
+            <Text style={[styles.toggleText, feedMode === "trips" && styles.toggleTextActive]}>
+              Trips
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, feedMode === "requests" && styles.toggleBtnActive]}
+            onPress={() => setFeedMode("requests")}
+          >
+            <Text style={[styles.toggleText, feedMode === "requests" && styles.toggleTextActive]}>
+              Requests
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Trip Feed */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.accent} size="large" />
-        </View>
+      {/* Feed */}
+      {feedMode === "all" ? (
+        loading || orLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.accent} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            data={[
+              ...trips.map((t) => ({ type: "trip" as const, id: t.id, data: t })),
+              ...openRequests.map((r) => ({ type: "request" as const, id: r.id, data: r })),
+            ].sort((a, b) => {
+              const aTime = (a.data.createdAt as any)?.seconds ?? 0;
+              const bTime = (b.data.createdAt as any)?.seconds ?? 0;
+              return bTime - aTime;
+            })}
+            keyExtractor={(item) => `${item.type}-${item.id}`}
+            renderItem={({ item }) =>
+              item.type === "trip" ? (
+                <TripCard trip={item.data} isRequested={requestedTripIds.has(item.id)} />
+              ) : (
+                <OpenRequestCard request={item.data} hasOffered={offeredRequestIds.has(item.id)} />
+              )
+            }
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing || orRefreshing}
+                onRefresh={() => { onRefresh(); onRefreshRequests(); }}
+                tintColor={Colors.accent}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="globe-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>Nothing here yet</Text>
+                <Text style={styles.emptySubtext}>Be the first to post!</Text>
+              </View>
+            }
+          />
+        )
+      ) : feedMode === "trips" ? (
+        loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.accent} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            data={trips}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TripCard trip={item} isRequested={requestedTripIds.has(item.id)} />
+            )}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
+            }
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="airplane-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>No trips found</Text>
+                <Text style={styles.emptySubtext}>Be the first to post a trip!</Text>
+              </View>
+            }
+          />
+        )
       ) : (
-        <FlatList
-          data={trips}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TripCard trip={item} isRequested={requestedTripIds.has(item.id)} />
-          )}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={Colors.accent}
-            />
-          }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator
-                color={Colors.accent}
-                style={{ marginVertical: 16 }}
-              />
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons
-                name="airplane-outline"
-                size={48}
-                color={Colors.textMuted}
-              />
-              <Text style={styles.emptyText}>No trips found</Text>
-              <Text style={styles.emptySubtext}>
-                Be the first to post a trip!
-              </Text>
-            </View>
-          }
-        />
+        orLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.accent} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            data={openRequests}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <OpenRequestCard request={item} hasOffered={offeredRequestIds.has(item.id)} />
+            )}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl refreshing={orRefreshing} onRefresh={onRefreshRequests} tintColor={Colors.accent} />
+            }
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>No requests found</Text>
+                <Text style={styles.emptySubtext}>Be the first to post a request!</Text>
+              </View>
+            }
+          />
+        )
       )}
 
       <LocationPicker
@@ -355,15 +427,13 @@ export default function HomeScreen() {
           setDateFrom(from);
           setDateTo(to);
           setDatePickerOpen(false);
-          setLoading(true);
-          fetchTrips(fromFilter?.city_name, toFilter?.city_name, from, to);
+          subscribeTrips(fromFilter?.city_name, toFilter?.city_name, from, to);
         }}
         onClear={() => {
           setDateFrom(null);
           setDateTo(null);
           setDatePickerOpen(false);
-          setLoading(true);
-          fetchTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
+          subscribeTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
         }}
         onClose={() => setDatePickerOpen(false)}
       />
@@ -477,6 +547,9 @@ const styles = StyleSheet.create({
   dateChipTextActive: {
     color: Colors.accent,
   },
+  dateChipDisabled: {
+    opacity: 0.35,
+  },
   list: {
     paddingTop: 16,
     paddingBottom: 80,
@@ -499,5 +572,28 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  toggle: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 20,
+    padding: 3,
+    alignSelf: "flex-start",
+  },
+  toggleBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    borderRadius: 18,
+  },
+  toggleBtnActive: {
+    backgroundColor: Colors.white,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
+  },
+  toggleTextActive: {
+    color: Colors.headerDark,
   },
 });

@@ -27,6 +27,9 @@ export async function getOrCreateConversation(
   name1: string,
   name2: string,
 ): Promise<string> {
+  if (!uid1 || !uid2 || !requestId) {
+    throw new Error('Missing required conversation fields');
+  }
   const snapshot = await firestore()
     .collection('conversations')
     .where('requestId', '==', requestId)
@@ -37,10 +40,10 @@ export async function getOrCreateConversation(
   }
 
   const ref = await firestore().collection('conversations').add({
-    tripId,
-    requestId,
+    tripId: tripId ?? '',
+    requestId: requestId ?? '',
     participants: [uid1, uid2],
-    participantNames: { [uid1]: name1, [uid2]: name2 },
+    participantNames: { [uid1]: name1 || '', [uid2]: name2 || '' },
     lastMessage: '',
     lastMessageAt: firestore.FieldValue.serverTimestamp(),
     unreadCounts: { [uid1]: 0, [uid2]: 0 },

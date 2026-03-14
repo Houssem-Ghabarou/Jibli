@@ -2,7 +2,11 @@ import { getOptimizedImageUrl, uploadFileToCloudinary } from '@/cloudinary/Cloud
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getConversation, markConversationRead, Message, sendMessage, subscribeToMessages } from '@/lib/firestore/conversations';
+import { getOpenRequestById } from '@/lib/firestore/openRequests';
+import { getRequestById } from '@/lib/firestore/requests';
+import { getTripById } from '@/lib/firestore/trips';
 import { getUserProfile } from '@/lib/firestore/users';
+import { getFlag } from '@/data/locations';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -42,6 +46,9 @@ export default function ChatScreen() {
   const [otherUid, setOtherUid] = useState('');
   const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
   const [convLoaded, setConvLoaded] = useState(false);
+  const [tripInfo, setTripInfo] = useState<{ from: string; to: string; fromFlag?: string; toFlag?: string } | null>(null);
+  const [itemName, setItemName] = useState<string | null>(null);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const { bottom, top } = useSafeAreaInsets();
 
@@ -68,7 +75,7 @@ export default function ChatScreen() {
   }
 
   useEffect(() => {
-    getConversation(id).then(conv => {
+    getConversation(id).then(async conv => {
       if (conv && user) {
         const other = conv.participants.find(p => p !== user.uid) ?? '';
         setOtherUid(other);
@@ -77,6 +84,47 @@ export default function ChatScreen() {
         getUserProfile(other).then(p => {
           if (p?.avatarUrl) setOtherAvatar(p.avatarUrl);
         });
+
+        // Fetch Metadata
+        setFetchingMeta(true);
+        try {
+          // 1. Try Trip
+          if (conv.tripId) {
+            const trip = await getTripById(conv.tripId);
+            if (trip) {
+              const fromName = typeof trip.from === 'string' ? trip.from : (trip.from?.city_name ?? '');
+              const toName = typeof trip.to === 'string' ? trip.to : (trip.to?.city_name ?? '');
+              const fromFlag = typeof trip.from === 'object' ? getFlag(trip.from?.country_code) : '📍';
+              const toFlag = typeof trip.to === 'object' ? getFlag(trip.to?.country_code) : '📍';
+              setTripInfo({ from: fromName, to: toName, fromFlag, toFlag });
+            } else {
+              // Might be an Open Request ID (we use it as tripId in some places)
+              const or = await getOpenRequestById(conv.tripId);
+              if (or) {
+                setTripInfo({
+                  from: or.from.city_name,
+                  to: or.to.city_name,
+                  fromFlag: getFlag(or.from.country_code),
+                  toFlag: getFlag(or.to.country_code),
+                });
+                setItemName(or.itemName);
+              }
+            }
+          }
+
+          // 2. Fetch Item Request
+          if (conv.requestId) {
+            // First check if it's already set from Open Request
+            if (!itemName) {
+              const req = await getRequestById(conv.requestId);
+              if (req) setItemName(req.itemName);
+            }
+          }
+        } catch (err) {
+          console.warn('Error fetching chat meta:', err);
+        } finally {
+          setFetchingMeta(false);
+        }
       }
       setConvLoaded(true);
     });
@@ -241,6 +289,32 @@ export default function ChatScreen() {
           </View>
         )}
       </View>
+
+      {/* Trip Info Banner */}
+      {!fetchingMeta && tripInfo && (
+        <View style={styles.tripBanner}>
+          <View style={styles.routeBox}>
+            <View style={styles.routeSide}>
+              <Text style={styles.bannerFlag}>{tripInfo.fromFlag}</Text>
+              <Text style={styles.bannerCity} numberOfLines={1}>{tripInfo.from}</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={12} color={Colors.textMuted} style={{ marginHorizontal: 4 }} />
+            <View style={styles.routeSide}>
+              <Text style={styles.bannerFlag}>{tripInfo.toFlag}</Text>
+              <Text style={styles.bannerCity} numberOfLines={1}>{tripInfo.to}</Text>
+            </View>
+          </View>
+          {itemName && (
+            <View style={styles.dividerH} />
+          )}
+          {itemName && (
+            <View style={styles.itemBox}>
+              <Ionicons name="cube-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.bannerItem} numberOfLines={1}>{itemName}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {(loading || !convLoaded) ? (
         <View style={styles.center}>
@@ -667,4 +741,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tripBanner: {
+    backgroundColor: Colors.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 12,
+  },
+  routeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  routeSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  bannerFlag: { fontSize: 16 },
+  bannerCity: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  dividerH: { width: 1, height: 20, backgroundColor: Colors.border },
+  itemBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '40%',
+  },
+  bannerItem: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
 });

@@ -42,7 +42,7 @@ export default function RequestDetailScreen() {
         if (r) {
           getTripById(r.tripId).then(t => { if (t) setTrip(t); });
         }
-        if (r && r.status !== 'pending' && r.status !== 'rejected') {
+        if (r && r.status !== 'pending' && r.status !== 'rejected' && r.travelerId && r.requesterId) {
           getOrCreateConversation(
             r.tripId, r.id, r.travelerId, r.requesterId, '', r.requesterName ?? ''
           ).then(setConversationId);
@@ -184,14 +184,14 @@ export default function RequestDetailScreen() {
                   <View style={styles.routePoint}>
                     <Ionicons name="airplane-outline" size={18} color={Colors.accent} />
                     <Text style={styles.routeCity}>
-                      {typeof trip.from === 'string' ? trip.from : trip.from.city_name}
+                      {typeof trip.from === 'string' ? trip.from : (trip.from?.city_name ?? '')}
                     </Text>
                   </View>
                   <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
                   <View style={styles.routePoint}>
                     <Ionicons name="location-outline" size={18} color={Colors.success} />
                     <Text style={styles.routeCity}>
-                      {typeof trip.to === 'string' ? trip.to : trip.to.city_name}
+                      {typeof trip.to === 'string' ? trip.to : (trip.to?.city_name ?? '')}
                     </Text>
                   </View>
                 </View>

@@ -49,6 +49,8 @@ export default function RootLayout() {
                 <Stack.Screen name="orders" options={{ headerShown: false }} />
                 <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
                 <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="open-request/create" options={{ headerShown: false }} />
+                <Stack.Screen name="open-request/[id]" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style="auto" />
             </NotificationsProvider>

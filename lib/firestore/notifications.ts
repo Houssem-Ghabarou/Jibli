@@ -1,7 +1,15 @@
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
-import { Paginated } from './trips';
+import firestore, {
+    FirebaseFirestoreTypes,
+} from "@react-native-firebase/firestore";
+import { Paginated } from "./trips";
 
-export type NotificationType = 'new_request' | 'request_accepted' | 'new_message' | 'delivery_confirmed';
+export type NotificationType =
+  | "new_request"
+  | "request_accepted"
+  | "new_message"
+  | "delivery_confirmed"
+  | "offer_accepted"
+  | "new_offer";
 
 export interface Notification {
   id: string;
@@ -20,10 +28,10 @@ export async function getNotifications(
   cursor?: FirebaseFirestoreTypes.QueryDocumentSnapshot | null,
 ): Promise<Paginated<Notification>> {
   let query = firestore()
-    .collection('notifications')
+    .collection("notifications")
     .doc(uid)
-    .collection('items')
-    .orderBy('createdAt', 'desc')
+    .collection("items")
+    .orderBy("createdAt", "desc")
     .limit(PAGE_SIZE);
 
   if (cursor) query = query.startAfter(cursor) as any;
@@ -32,27 +40,33 @@ export async function getNotifications(
   const docs = snapshot.docs;
 
   return {
-    data: docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Notification[],
+    data: docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Notification[],
     lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
     hasMore: docs.length === PAGE_SIZE,
   };
 }
 
-export async function markAsRead(uid: string, notificationId: string): Promise<void> {
+export async function markAsRead(
+  uid: string,
+  notificationId: string,
+): Promise<void> {
   await firestore()
-    .collection('notifications')
+    .collection("notifications")
     .doc(uid)
-    .collection('items')
+    .collection("items")
     .doc(notificationId)
     .update({ read: true });
 }
 
 export async function markAllAsRead(uid: string): Promise<void> {
   const snapshot = await firestore()
-    .collection('notifications')
+    .collection("notifications")
     .doc(uid)
-    .collection('items')
-    .where('read', '==', false)
+    .collection("items")
+    .where("read", "==", false)
     .get();
 
   const batch = firestore().batch();
@@ -67,12 +81,12 @@ export async function createNotification(
   type: NotificationType,
   title: string,
   body: string,
-  relatedId: string
+  relatedId: string,
 ): Promise<void> {
   await firestore()
-    .collection('notifications')
+    .collection("notifications")
     .doc(uid)
-    .collection('items')
+    .collection("items")
     .add({
       type,
       title,
@@ -85,15 +99,15 @@ export async function createNotification(
 
 export function subscribeToNotifications(
   uid: string,
-  callback: (notifications: Notification[]) => void
+  callback: (notifications: Notification[]) => void,
 ): () => void {
   return firestore()
-    .collection('notifications')
+    .collection("notifications")
     .doc(uid)
-    .collection('items')
-    .where('read', '==', false)
+    .collection("items")
+    .where("read", "==", false)
     .onSnapshot(
-      snapshot => {
+      (snapshot) => {
         if (!snapshot || !snapshot.docs) return;
         const notifications = snapshot.docs.map((doc: any) => ({
           id: doc.id,
@@ -101,8 +115,8 @@ export function subscribeToNotifications(
         })) as Notification[];
         callback(notifications);
       },
-      error => {
-        console.warn('subscribeToNotifications error:', error);
-      }
+      (error) => {
+        console.warn("subscribeToNotifications error:", error);
+      },
     );
 }

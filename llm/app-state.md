@@ -1,5 +1,5 @@
 # Jibli — App State Document
-_Last updated: 2026-03-12_
+_Last updated: 2026-03-13_
 
 ---
 
@@ -44,13 +44,13 @@ app/
 │   └── register.tsx         Registration (name, email, password)
 │
 ├── (tabs)/
-│   ├── _layout.tsx          Bottom tab bar + FAB for "Post Trip"
-│   ├── index.tsx            Home feed (search + trip list)
+│   ├── _layout.tsx          Bottom tab bar + FAB (Post Trip / Post Request action sheet)
+│   ├── index.tsx            Home feed — Trips | Requests toggle
 │   ├── trips.tsx            My Trips (posted by me)
-│   ├── post.tsx             Redirect → /trip/create
+│   ├── post.tsx             Redirect (FAB uses action sheet now)
 │   ├── messages.tsx         Conversation list
 │   ├── profile.tsx          User profile hub
-│   └── requests.tsx         Sent / Received requests (hidden tab)
+│   └── requests.tsx         Sent / Received / My Posts tabs
 │
 ├── trip/
 │   ├── create.tsx           Post a new trip
@@ -59,6 +59,10 @@ app/
 ├── request/
 │   ├── create.tsx           Send a delivery request on a trip
 │   └── [id].tsx             Request detail + accept/reject/chat + other party profile link
+│
+├── open-request/
+│   ├── create.tsx           Post an open request (item, from/to, weight, reward)
+│   └── [id].tsx             Open request detail — traveler offers / requester reviews offers
 │
 ├── chat/
 │   └── [id].tsx             Real-time 1:1 chat with image sending
@@ -103,7 +107,10 @@ app/
   - Both are tappable → `/user/{uid}`
 
 ### Requests Tab (`app/(tabs)/requests.tsx`)
-- **Working:** Sent / Received tabs, pending badge count, paginated
+- **Working:** Sent / Received tabs (My Posts removed), pending badge count
+- **Sent tab:** Direct trip requests sent + offers made on others' open requests + feed posts I created (open request posts with offer count + "Review offers" button)
+- **Received tab:** Requests on my trips + my feed posts that have received offers (open request cards with offer count + "Review offers" button)
+- **Status labels:** Pending / Accepted / Completed / Rejected — `bought` maps to Accepted, `delivered` maps to Completed, open request `open` maps to Pending, `taken` maps to Accepted
 
 ### Messages (`app/(tabs)/messages.tsx`)
 - **Working:** Conversation list with real-time Firestore subscription, unread counts
@@ -199,6 +206,28 @@ Filters (server-side Firestore `where`):
   createdAt }
 ```
 Functions: `createRequest`, `getRequestById`, `hasExistingRequest`, `getSentRequests`, `getReceivedRequests`, `updateRequestStatus`
+
+
+### `open_requests` — **NEW**
+```
+{ requesterId, requesterName, requesterAvatar,
+  itemName, description, weightKg, reward, photoUrl?,
+  from: TripLocation, to: TripLocation,
+  fromCity, toCity,                            // lowercase, for filtering
+  status: "open"|"taken"|"cancelled",
+  offerCount,
+  createdAt }
+```
+Functions: `createOpenRequest`, `getOpenRequests(filters?, cursor?)`, `getOpenRequestById`, `getOpenRequestsByRequester`, `cancelOpenRequest`, `getMyOfferedOpenRequestIds`
+Filters: `from`/`to` city name, status=open only in feed
+
+### `offers` — **NEW**
+```
+{ openRequestId, travelerId, travelerName, travelerAvatar,
+  status: "pending"|"accepted"|"rejected",
+  createdAt }
+```
+Functions: `createOffer`, `getOffersByOpenRequest`, `hasExistingOffer`, `acceptOffer` (batch: accepts offer + marks request taken + rejects others + creates conversation + sends notification), `rejectOffer`
 
 ### `users`
 ```

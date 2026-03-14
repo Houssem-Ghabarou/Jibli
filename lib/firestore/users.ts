@@ -1,5 +1,5 @@
-import firestore from '@react-native-firebase/firestore';
-import storage from '@react-native-firebase/storage';
+import firestore from "@react-native-firebase/firestore";
+import storage from "@react-native-firebase/storage";
 
 export interface UserProfile {
   uid: string;
@@ -13,19 +13,22 @@ export interface UserProfile {
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const doc = await firestore().collection('users').doc(uid).get();
+  const doc = await firestore().collection("users").doc(uid).get();
   if (!doc.exists) return null;
   return { uid: doc.id, ...doc.data() } as UserProfile;
 }
 
-export async function updateUserProfile(uid: string, data: Partial<UserProfile>): Promise<void> {
-  await firestore().collection('users').doc(uid).update(data);
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<UserProfile>,
+): Promise<void> {
+  await firestore().collection("users").doc(uid).update(data);
 }
 
 export async function uploadAvatar(uid: string, uri: string): Promise<string> {
   const ref = storage().ref(`avatars/${uid}`);
   await ref.putFile(uri);
   const url = await ref.getDownloadURL();
-  await firestore().collection('users').doc(uid).update({ avatarUrl: url });
+  await firestore().collection("users").doc(uid).update({ avatarUrl: url });
   return url;
 }

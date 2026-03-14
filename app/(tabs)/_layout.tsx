@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useNotifications } from '@/context/NotificationsContext';
+import PostOptionsModal from '@/components/ui/PostOptionsModal';
 
 function FABButton({ onPress }: { onPress: () => void }) {
   return (
@@ -21,10 +23,24 @@ function FABButton({ onPress }: { onPress: () => void }) {
 
 export default function TabsLayout() {
   const router = useRouter();
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const { unreadMessages } = useNotifications();
   const { bottom } = useSafeAreaInsets();
 
+  function handleFABPress() {
+    setIsMenuVisible(!isMenuVisible);
+  }
+
+  function handleOptionSelect(option: 'trip' | 'request') {
+    if (option === 'trip') {
+      router.push('/trip/create');
+    } else {
+      router.push('/open-request/create');
+    }
+  }
+
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -65,9 +81,7 @@ export default function TabsLayout() {
         options={{
           title: '',
           tabBarButton: () => (
-            <FABButton
-              onPress={() => router.push('/trip/create')}
-            />
+            <FABButton onPress={handleFABPress} />
           ),
         }}
       />
@@ -93,6 +107,13 @@ export default function TabsLayout() {
       />
       <Tabs.Screen name="trips" options={{ href: null }} />
     </Tabs>
+
+    <PostOptionsModal
+      isVisible={isMenuVisible}
+      onClose={() => setIsMenuVisible(false)}
+      onOptionSelect={handleOptionSelect}
+    />
+    </>
   );
 }
 

@@ -14,8 +14,10 @@ import { useAuth } from '@/context/AuthContext';
 import { getNotifications, markAsRead, markAllAsRead, Notification } from '@/lib/firestore/notifications';
 
 const TYPE_ICONS: Record<string, string> = {
+  new_offer: 'person-add-outline',
   new_request: 'bag-outline',
   request_accepted: 'checkmark-circle-outline',
+  offer_accepted: 'checkmark-circle-outline',
   new_message: 'chatbubble-outline',
   delivery_confirmed: 'cube-outline',
 };
@@ -70,8 +72,12 @@ export default function NotificationsScreen() {
       );
     }
 
-    if (item.type === 'new_request' || item.type === 'request_accepted') {
+    if (item.type === 'new_offer') {
+      router.push(`/open-request/${item.relatedId}` as any);
+    } else if (item.type === 'new_request' || item.type === 'request_accepted') {
       router.push(`/request/${item.relatedId}`);
+    } else if (item.type === 'offer_accepted') {
+      router.push(`/open-request/${item.relatedId}` as any);
     } else if (item.type === 'new_message') {
       router.push(`/chat/${item.relatedId}`);
     }

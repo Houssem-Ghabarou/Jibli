@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,24 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getSentRequests, getReceivedRequests, updateRequestStatus, Request } from '@/lib/firestore/requests';
+import { subscribeToSentRequests, subscribeToReceivedRequests, updateRequestStatus, Request } from '@/lib/firestore/requests';
 import { createNotification } from '@/lib/firestore/notifications';
 import { getOrCreateConversation } from '@/lib/firestore/conversations';
 import { getUserProfile } from '@/lib/firestore/users';
 import { useUI } from '@/context/UIContext';
+import { subscribeToOpenRequestsByRequester, subscribeToOffersByTraveler, OpenRequest, OfferWithRequest } from '@/lib/firestore/openRequests';
+import { getFlag } from '@/data/locations';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   Colors.warning,
   accepted:  Colors.success,
   rejected:  '#E74C3C',
-  bought:    '#3498DB',
-  delivered: '#9B59B6',
+  bought:    Colors.success,
+  delivered: Colors.success,
   completed: Colors.success,
   cancelled: Colors.textMuted,
 };
@@ -31,9 +33,9 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending:   'Pending',
   accepted:  'Accepted',
-  rejected:  'Declined',
-  bought:    'In Progress',
-  delivered: 'Delivered',
+  rejected:  'Rejected',
+  bought:    'Accepted',
+  delivered: 'Completed',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -176,6 +178,92 @@ function ReceivedRequestCard({
   );
 }
 
+function SentOfferCard({ item, onPress }: { item: OfferWithRequest; onPress: () => void }) {
+  const color = STATUS_COLORS[item.status] ?? Colors.textSecondary;
+  const fromFlag = item.from?.country_code ? getFlag(item.from.country_code) : '';
+  const toFlag = item.to?.country_code ? getFlag(item.to.country_code) : '';
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={styles.cardTop}>
+        <Text style={styles.itemName} numberOfLines={1}>{item.itemName}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: color + '22' }]}>
+          <Text style={[styles.statusBadgeText, { color }]}>
+            {STATUS_LABELS[item.status] ?? item.status}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.desc}>{fromFlag} {item.from?.city_name} → {toFlag} {item.to?.city_name}</Text>
+      <View style={styles.metaRow}>
+        <View style={styles.metaChip}>
+          <Ionicons name="scale-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.metaText}>{item.weightKg} kg</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="cash-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.metaText}>{item.reward} TND reward</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function OpenRequestPostCard({ item }: { item: OpenRequest }) {
+  const router = useRouter();
+  const fromFlag = item.from?.country_code ? getFlag(item.from.country_code) : '';
+  const toFlag = item.to?.country_code ? getFlag(item.to.country_code) : '';
+  const statusColor =
+    item.status === 'open' ? Colors.warning :
+    item.status === 'taken' ? Colors.success :
+    Colors.textMuted;
+  const statusLabel =
+    item.status === 'open' ? 'Pending' :
+    item.status === 'taken' ? 'Accepted' :
+    'Cancelled';
+
+  return (
+    <TouchableOpacity
+      style={[styles.card, styles.postCard]}
+      onPress={() => router.push(`/open-request/${item.id}` as any)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.cardTop}>
+        <Text style={styles.itemName} numberOfLines={1}>{item.itemName}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: statusColor + '22' }]}>
+          <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+        </View>
+      </View>
+      <Text style={styles.desc}>{fromFlag} {item.from?.city_name} → {toFlag} {item.to?.city_name}</Text>
+      <View style={styles.metaRow}>
+        <View style={styles.metaChip}>
+          <Ionicons name="cash-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.metaText}>{item.reward} TND</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="scale-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.metaText}>{item.weightKg} kg</Text>
+        </View>
+        {item.offerCount > 0 && (
+          <View style={[styles.metaChip, styles.offerCountChip]}>
+            <Ionicons name="people-outline" size={12} color={Colors.accent} />
+            <Text style={[styles.metaText, { color: Colors.accent }]}>
+              {item.offerCount} offer{item.offerCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        )}
+      </View>
+      {item.offerCount > 0 && item.status === 'open' && (
+        <TouchableOpacity
+          style={styles.reviewOffersBtn}
+          onPress={() => router.push(`/open-request/${item.id}` as any)}
+        >
+          <Text style={styles.reviewOffersBtnText}>Review offers</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.accent} />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function RequestsScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -183,51 +271,47 @@ export default function RequestsScreen() {
   const [tab, setTab] = useState<'sent' | 'received'>('sent');
   const [sent, setSent] = useState<Request[]>([]);
   const [received, setReceived] = useState<Request[]>([]);
+  const [myOffers, setMyOffers] = useState<OfferWithRequest[]>([]);
+  const [myPosts, setMyPosts] = useState<OpenRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [sentCursor, setSentCursor] = useState<any>(null);
-  const [receivedCursor, setReceivedCursor] = useState<any>(null);
-  const [sentHasMore, setSentHasMore] = useState(false);
-  const [receivedHasMore, setReceivedHasMore] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-    Promise.all([
-      getSentRequests(user.uid),
-      getReceivedRequests(user.uid),
-    ]).then(([s, r]) => {
-      setSent(s.data);
-      setSentCursor(s.lastDoc);
-      setSentHasMore(s.hasMore);
-      setReceived(r.data);
-      setReceivedCursor(r.lastDoc);
-      setReceivedHasMore(r.hasMore);
-      setLoading(false);
-    });
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      setLoading(true);
+      let readyCount = 0;
+      const onReady = () => { if (++readyCount === 4) setLoading(false); };
 
-  async function loadMore() {
-    if (!user || loadingMore) return;
-    if (tab === 'sent' && sentHasMore && sentCursor) {
-      setLoadingMore(true);
-      try {
-        const result = await getSentRequests(user.uid, sentCursor);
-        setSent(prev => [...prev, ...result.data]);
-        setSentCursor(result.lastDoc);
-        setSentHasMore(result.hasMore);
-      } finally { setLoadingMore(false); }
-    } else if (tab === 'received' && receivedHasMore && receivedCursor) {
-      setLoadingMore(true);
-      try {
-        const result = await getReceivedRequests(user.uid, receivedCursor);
-        setReceived(prev => [...prev, ...result.data]);
-        setReceivedCursor(result.lastDoc);
-        setReceivedHasMore(result.hasMore);
-      } finally { setLoadingMore(false); }
-    }
-  }
+      const unsubSent = subscribeToSentRequests(
+        user.uid,
+        data => { setSent(data); onReady(); },
+        () => onReady(),
+      );
+      const unsubRecv = subscribeToReceivedRequests(
+        user.uid,
+        data => { setReceived(data); onReady(); },
+        () => onReady(),
+      );
+      const unsubPosts = subscribeToOpenRequestsByRequester(
+        user.uid,
+        data => { setMyPosts(data); onReady(); },
+        () => onReady(),
+      );
+      const unsubOffers = subscribeToOffersByTraveler(
+        user.uid,
+        (data: OfferWithRequest[]) => { setMyOffers(data); onReady(); },
+        () => onReady(),
+      );
+
+      return () => {
+        unsubSent();
+        unsubRecv();
+        unsubPosts();
+        unsubOffers();
+      };
+    }, [user]),
+  );
 
   async function handleAccept(item: Request) {
     if (!user) return;
@@ -295,7 +379,26 @@ export default function RequestsScreen() {
     });
   }
 
-  const data = tab === 'sent' ? sent : received;
+  type SentItem =
+    | { kind: 'request'; data: Request }
+    | { kind: 'offer'; data: OfferWithRequest }
+    | { kind: 'post'; data: OpenRequest };
+
+  const sentItems: SentItem[] = [
+    ...sent.map(r => ({ kind: 'request' as const, data: r })),
+    ...myOffers.map(o => ({ kind: 'offer' as const, data: o })),
+    ...myPosts.map(p => ({ kind: 'post' as const, data: p })),
+  ].sort((a, b) => (b.data.createdAt?.seconds ?? 0) - (a.data.createdAt?.seconds ?? 0));
+
+  type ReceivedItem =
+    | { kind: 'request'; data: Request }
+    | { kind: 'post'; data: OpenRequest };
+
+  const receivedItems: ReceivedItem[] = [
+    ...received.map(r => ({ kind: 'request' as const, data: r })),
+    ...myPosts.filter(p => p.offerCount > 0).map(p => ({ kind: 'post' as const, data: p })),
+  ].sort((a, b) => (b.data.createdAt?.seconds ?? 0) - (a.data.createdAt?.seconds ?? 0));
+
   const pendingReceived = received.filter(r => r.status === 'pending').length;
 
   return (
@@ -330,37 +433,61 @@ export default function RequestsScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
-      ) : (
+      ) : tab === 'sent' ? (
         <FlatList
-          data={data}
-          keyExtractor={item => item.id}
+          data={sentItems}
+          keyExtractor={item =>
+            item.kind === 'offer' ? item.data.offerId :
+            item.kind === 'post' ? `post-${item.data.id}` :
+            item.data.id
+          }
           renderItem={({ item }) =>
-            tab === 'sent'
-              ? <SentRequestCard
-                  item={item}
-                  onPress={() => router.push(`/request/${item.id}`)}
-                  onCancel={() => handleCancel(item)}
-                  cancelLoading={actionLoadingId === item.id}
+            item.kind === 'offer'
+              ? <SentOfferCard
+                  item={item.data}
+                  onPress={() => router.push(`/open-request/${item.data.openRequestId}` as any)}
                 />
-              : <ReceivedRequestCard
-                  item={item}
-                  onPress={() => router.push(`/request/${item.id}`)}
-                  onAccept={() => handleAccept(item)}
-                  onDecline={() => handleDecline(item)}
-                  actionLoading={actionLoadingId === item.id}
+              : item.kind === 'post'
+              ? <OpenRequestPostCard item={item.data} />
+              : <SentRequestCard
+                  item={item.data}
+                  onPress={() => router.push(`/request/${item.data.id}`)}
+                  onCancel={() => handleCancel(item.data)}
+                  cancelLoading={actionLoadingId === item.data.id}
                 />
           }
           contentContainerStyle={styles.list}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 16 }} /> : null}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No {tab} requests yet</Text>
-              <Text style={styles.emptySubtext}>
-                {tab === 'sent' ? 'Browse trips and send your first request' : 'Post a trip to start receiving requests'}
-              </Text>
+              <Text style={styles.emptyText}>Nothing sent yet</Text>
+              <Text style={styles.emptySubtext}>Browse trips to send a request, or post a feed request for travelers to find</Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={receivedItems}
+          keyExtractor={item =>
+            item.kind === 'post' ? `post-${item.data.id}` : item.data.id
+          }
+          renderItem={({ item }) =>
+            item.kind === 'post'
+              ? <OpenRequestPostCard item={item.data} />
+              : <ReceivedRequestCard
+                  item={item.data}
+                  onPress={() => router.push(`/request/${item.data.id}`)}
+                  onAccept={() => handleAccept(item.data)}
+                  onDecline={() => handleDecline(item.data)}
+                  actionLoading={actionLoadingId === item.data.id}
+                />
+          }
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>Nothing received yet</Text>
+              <Text style={styles.emptySubtext}>Post a trip to receive delivery requests, or post a feed request to receive offers</Text>
             </View>
           }
         />
@@ -448,6 +575,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  postCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.accent + '66',
+  },
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -477,6 +608,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     gap: 8,
+    flexWrap: 'wrap',
   },
   metaChip: {
     flexDirection: 'row',
@@ -487,10 +619,29 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+  offerCountChip: {
+    backgroundColor: Colors.accent + '15',
+  },
   metaText: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '500',
+  },
+  reviewOffersBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    marginTop: 2,
+  },
+  reviewOffersBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.accent,
   },
   requesterRow: {
     flexDirection: 'row',
