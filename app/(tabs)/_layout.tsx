@@ -1,43 +1,60 @@
-import { useState } from 'react';
+import { useRef, useCallback } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useNotifications } from '@/context/NotificationsContext';
-import PostOptionsModal from '@/components/ui/PostOptionsModal';
+import PostOptionsBottomSheet, { PostOptionsBottomSheetRef } from '@/components/ui/PostOptionsBottomSheet';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function FABButton({ onPress }: { onPress: () => void }) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
     <View style={styles.fabWrapper}>
-      <TouchableOpacity
-        style={styles.fab}
+      <AnimatedPressable
+        style={[styles.fab, animatedStyle]}
+        onPressIn={() => {
+          scale.value = withSpring(0.92, { damping: 15, stiffness: 400 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+        }}
         onPress={onPress}
-        activeOpacity={0.9}
       >
-        <Ionicons name="add" size={36} color={Colors.white} />
-      </TouchableOpacity>
+        <Ionicons name="add" size={32} color={Colors.white} />
+      </AnimatedPressable>
     </View>
   );
 }
 
 export default function TabsLayout() {
   const router = useRouter();
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const postSheetRef = useRef<PostOptionsBottomSheetRef>(null);
   const { unreadMessages } = useNotifications();
   const { bottom } = useSafeAreaInsets();
 
-  function handleFABPress() {
-    setIsMenuVisible(!isMenuVisible);
-  }
+  const handleFABPress = useCallback(() => {
+    postSheetRef.current?.present();
+  }, []);
 
-  function handleOptionSelect(option: 'trip' | 'request') {
-    if (option === 'trip') {
-      router.push('/trip/create');
-    } else {
-      router.push('/open-request/create');
-    }
-  }
+  const handleOptionSelect = useCallback(
+    (option: 'trip' | 'request') => {
+      if (option === 'trip') {
+        router.push('/trip/create');
+      } else {
+        router.push('/open-request/create');
+      }
+    },
+    [router]
+  );
 
   return (
     <>
@@ -108,9 +125,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="trips" options={{ href: null }} />
     </Tabs>
 
-    <PostOptionsModal
-      isVisible={isMenuVisible}
-      onClose={() => setIsMenuVisible(false)}
+    <PostOptionsBottomSheet
+      ref={postSheetRef}
       onOptionSelect={handleOptionSelect}
     />
     </>
@@ -125,21 +141,39 @@ const styles = StyleSheet.create({
   fabWrapper: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   fab: {
-    top: -24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    top: -22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
-    borderWidth: 4,
-    borderColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        borderWidth: 3,
+        borderColor: Colors.white,
+      },
+      android: {
+        elevation: 8,
+        borderWidth: 3,
+        borderColor: Colors.white,
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 8,
+        borderWidth: 3,
+        borderColor: Colors.white,
+      },
+    }),
   },
 });
