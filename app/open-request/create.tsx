@@ -1,3 +1,4 @@
+import DatePickerModal, { formatDateDisplay } from '@/components/DatePickerModal';
 import LocationField, { SelectedLocation } from '@/components/LocationField';
 import LocationPicker, { PickerResult } from '@/components/LocationPicker';
 import { Colors } from '@/constants/theme';
@@ -34,6 +35,8 @@ export default function CreateOpenRequestScreen() {
   const [description, setDescription] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [reward, setReward] = useState('');
+  const [needByDate, setNeedByDate] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { keyboardHeight, isKeyboardVisible, dismiss } = useKeyboard();
   const { scrollRef, registerField, setLayoutY } = useScrollToFocusedInput(keyboardHeight);
@@ -83,6 +86,7 @@ export default function CreateOpenRequestScreen() {
         description: description.trim(),
         weightKg: kg,
         reward: rewardAmt,
+        ...(needByDate ? { needByDate } : {}),
       });
       showToast('Request posted!', 'success');
       router.back();
@@ -158,6 +162,19 @@ export default function CreateOpenRequestScreen() {
           onPress={() => setPickerFor('to')}
         />
 
+        <View style={styles.field}>
+          <Text style={styles.label}>Need By Date</Text>
+          <TouchableOpacity
+            style={[styles.input, styles.dateInput]}
+            onPress={() => setDatePickerOpen(true)}
+          >
+            <Text style={[styles.dateInputText, !needByDate && styles.dateInputPlaceholder]}>
+              {needByDate ? formatDateDisplay(needByDate, needByDate) : 'Select date (optional)'}
+            </Text>
+            <Ionicons name="calendar-outline" size={18} color={needByDate ? Colors.textPrimary : Colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
         <View
           style={styles.row}
           onLayout={(e) => setLayoutY([2, 3], e.nativeEvent.layout.y)}
@@ -221,6 +238,16 @@ export default function CreateOpenRequestScreen() {
         keyboardHeight={keyboardHeight}
         onDone={dismiss}
       />
+      <DatePickerModal
+        visible={datePickerOpen}
+        mode="single"
+        initialFrom={needByDate || null}
+        onConfirm={(from) => {
+          setNeedByDate(from ?? '');
+          setDatePickerOpen(false);
+        }}
+        onClose={() => setDatePickerOpen(false)}
+      />
       <LocationPicker
         visible={pickerFor !== null}
         onClose={() => setPickerFor(null)}
@@ -283,6 +310,18 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
     paddingTop: 12,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputText: {
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  dateInputPlaceholder: {
+    color: Colors.textMuted,
   },
   guidelines: {
     backgroundColor: '#F0F4FF',

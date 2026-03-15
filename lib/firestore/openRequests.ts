@@ -22,6 +22,7 @@ export interface OpenRequest {
   to: TripLocation;
   fromCity: string;
   toCity: string;
+  needByDate?: string;
   status: OpenRequestStatus;
   offerCount: number;
   createdAt: any;
@@ -47,6 +48,7 @@ export interface CreateOpenRequestData {
   reward: number;
   from: TripLocation;
   to: TripLocation;
+  needByDate?: string;
 }
 
 export interface OpenRequestFilters {

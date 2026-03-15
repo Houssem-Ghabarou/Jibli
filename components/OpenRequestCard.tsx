@@ -1,7 +1,9 @@
 import { Colors } from '@/constants/theme';
+import { formatDateDisplay } from '@/components/DatePickerModal';
 import { getFlag } from '@/data/locations';
 import { OpenRequest } from '@/lib/firestore/openRequests';
 import { TripLocation } from '@/lib/firestore/trips';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -55,28 +57,47 @@ export default function OpenRequestCard({ request, hasOffered }: Props) {
         <View style={styles.cityBlock}>
           <Text style={styles.city}>{locFlag(request.from)} {locName(request.from)}</Text>
         </View>
-        <Text style={styles.arrow}>→</Text>
+        <View style={styles.arrowWrap}>
+          <Ionicons name="navigate" size={18} color={Colors.request} />
+        </View>
         <View style={[styles.cityBlock, styles.cityBlockRight]}>
           <Text style={styles.city}>{locFlag(request.to)} {locName(request.to)}</Text>
         </View>
       </View>
 
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Reward</Text>
-          <Text style={[styles.metaValue, styles.reward]}>{request.reward} TND</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Weight</Text>
-          <Text style={styles.metaValue}>{request.weightKg} kg</Text>
-        </View>
-        {request.offerCount > 0 && (
+      {request.needByDate ? (
+        <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Offers</Text>
-            <Text style={styles.metaValue}>{request.offerCount}</Text>
+            <Text style={styles.metaLabel}>Need By</Text>
+            <Text style={styles.metaValue}>{formatDateDisplay(request.needByDate ?? null, request.needByDate ?? null)}</Text>
           </View>
-        )}
-      </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Reward</Text>
+            <Text style={[styles.metaValue, styles.reward]}>{request.reward} TND</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Weight</Text>
+            <Text style={styles.metaValue}>{request.weightKg} kg</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Reward</Text>
+            <Text style={[styles.metaValue, styles.reward]}>{request.reward} TND</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Weight</Text>
+            <Text style={styles.metaValue}>{request.weightKg} kg</Text>
+          </View>
+          {request.offerCount > 0 && (
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Offers</Text>
+              <Text style={styles.metaValue}>{request.offerCount}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <TouchableOpacity
         style={styles.ctaButton}
@@ -177,11 +198,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textPrimary,
   },
-  arrow: {
-    color: Colors.request,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
+  arrowWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   metaRow: {
     flexDirection: 'row',

@@ -55,7 +55,10 @@ export default function DatePickerModal({
   const firstDayOfWeek = new Date(year, month, 1).getDay();
   const todayStr = toYMD(today);
 
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+
   function prevMonth() {
+    if (isCurrentMonth) return;
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
     else setMonth(m => m - 1);
   }
@@ -129,14 +132,27 @@ export default function DatePickerModal({
         <TouchableOpacity style={styles.sheet} activeOpacity={1} onPress={() => {}}>
           {/* Month nav */}
           <View style={styles.monthRow}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-              <Ionicons name="chevron-back" size={20} color={Colors.textPrimary} />
+            <TouchableOpacity onPress={prevMonth} style={styles.navBtn} disabled={isCurrentMonth}>
+              <Ionicons name="chevron-back" size={20} color={isCurrentMonth ? Colors.textMuted : Colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.monthLabel}>{MONTHS[month]} {year}</Text>
             <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
               <Ionicons name="chevron-forward" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
+
+          {/* Today shortcut */}
+          <TouchableOpacity
+            style={styles.todayBtn}
+            onPress={() => {
+              setStart(todayStr);
+              setEnd(todayStr);
+              setYear(today.getFullYear());
+              setMonth(today.getMonth());
+            }}
+          >
+            <Text style={styles.todayText}>Today</Text>
+          </TouchableOpacity>
 
           {/* Day headers */}
           <View style={styles.weekRow}>
@@ -226,6 +242,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  todayBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    marginBottom: 10,
+  },
+  todayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.accent,
   },
   weekRow: {
     flexDirection: 'row',

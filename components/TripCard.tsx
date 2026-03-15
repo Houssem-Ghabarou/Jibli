@@ -1,3 +1,4 @@
+import { formatDateDisplay } from '@/components/DatePickerModal';
 import { Colors } from '@/constants/theme';
 import { getFlag } from '@/data/locations';
 import { Trip } from '@/lib/firestore/trips';
@@ -86,7 +87,7 @@ export default function TripCard({ trip, isRequested }: Props) {
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Date</Text>
-          <Text style={styles.metaValue}>{trip.date}</Text>
+          <Text style={styles.metaValue}>{formatDateDisplay(trip.date, trip.date)}</Text>
         </View>
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Capacity</Text>

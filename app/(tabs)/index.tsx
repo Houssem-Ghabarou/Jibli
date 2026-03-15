@@ -8,7 +8,6 @@ import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { useUI } from "@/context/UIContext";
-import { getFlag } from "@/data/locations";
 import {
   getMyOfferedOpenRequestIds,
   OpenRequest,
@@ -129,24 +128,18 @@ export default function HomeScreen() {
     subscribeOpenReqs(fromFilter?.city_name, toFilter?.city_name);
   }
 
-  function onSearch() {
-    if (!user) return;
-    if (feedMode === "trips" || feedMode === "all") {
-      subscribeTrips(fromFilter?.city_name, toFilter?.city_name, dateFrom, dateTo);
-    }
-    if (feedMode === "requests" || feedMode === "all") {
-      subscribeOpenReqs(fromFilter?.city_name, toFilter?.city_name);
-    }
-  }
-
   function handlePickerSelect(result: PickerResult) {
     const loc: SearchLocation =
       "custom" in result
         ? { city_name: result.city, country_code: "" }
         : { city_name: result.city, country_code: result.country_code };
 
+    const newFrom = pickerFor === "from" ? loc : fromFilter;
+    const newTo = pickerFor === "to" ? loc : toFilter;
     if (pickerFor === "from") setFromFilter(loc);
     else setToFilter(loc);
+    subscribeTrips(newFrom?.city_name, newTo?.city_name, dateFrom, dateTo);
+    subscribeOpenReqs(newFrom?.city_name, newTo?.city_name);
   }
 
   const { unreadCount } = useNotifications();
@@ -154,46 +147,15 @@ export default function HomeScreen() {
   const dateLabel = formatDateDisplay(dateFrom, dateTo);
   const hasDateFilter = dateFrom !== null;
 
-  function SearchField({
-    filter,
-    placeholder,
-    icon,
-  }: {
-    filter: SearchLocation | null;
-    placeholder: string;
-    icon: string;
-  }) {
-    const flag = filter?.country_code ? getFlag(filter.country_code) : null;
-    return (
-      <View style={styles.searchInput}>
-        {flag ? (
-          <Text style={styles.flagSmall}>{flag}</Text>
-        ) : (
-          <Ionicons name={icon as any} size={16} color={Colors.textMuted} />
-        )}
-        <Text
-          style={[styles.searchText, !filter && styles.searchPlaceholder]}
-          numberOfLines={1}
-        >
-          {filter ? filter.city_name : placeholder}
-        </Text>
-        {filter && (
-          <TouchableOpacity
-            onPress={() => {
-              if (placeholder === "From...") setFromFilter(null);
-              else setToFilter(null);
-            }}
-          >
-            <Ionicons
-              name="close-circle-outline"
-              size={16}
-              color="rgba(255,255,255,0.6)"
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
+  const filteredOpenRequests = hasDateFilter
+    ? openRequests.filter((r) => {
+        if (!r.needByDate) return true; // no date set — always show
+        if (dateFrom && r.needByDate < dateFrom) return false;
+        if (dateTo && r.needByDate > dateTo) return false;
+        return true;
+      })
+    : openRequests;
+
 
   return (
     <View style={styles.container}>
@@ -225,68 +187,62 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchRow}>
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={() => setPickerFor("from")}
-          >
-            <SearchField
-              filter={fromFilter}
-              placeholder="From..."
-              icon="location-outline"
-            />
+        {/* From + To row */}
+        <View style={styles.inputsRow}>
+          <TouchableOpacity style={styles.searchRow} onPress={() => setPickerFor("from")} activeOpacity={0.7}>
+            <Ionicons name="location-outline" size={16} color={fromFilter ? Colors.accent : "rgba(255,255,255,0.6)"} />
+            <Text style={[styles.searchRowText, !fromFilter && styles.searchRowPlaceholder]} numberOfLines={1}>
+              {fromFilter ? fromFilter.city_name : "From..."}
+            </Text>
+            {fromFilter && (
+              <TouchableOpacity onPress={() => { setFromFilter(null); subscribeTrips(undefined, toFilter?.city_name, dateFrom, dateTo); subscribeOpenReqs(undefined, toFilter?.city_name); }} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={() => setPickerFor("to")}
-          >
-            <SearchField
-              filter={toFilter}
-              placeholder="To..."
-              icon="navigate-outline"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.searchButton} onPress={onSearch}>
-            <Ionicons name="search-outline" size={20} color={Colors.white} />
+
+          <TouchableOpacity style={styles.searchRow} onPress={() => setPickerFor("to")} activeOpacity={0.7}>
+            <Ionicons name="navigate-outline" size={16} color={toFilter ? Colors.accent : "rgba(255,255,255,0.6)"} />
+            <Text style={[styles.searchRowText, !toFilter && styles.searchRowPlaceholder]} numberOfLines={1}>
+              {toFilter ? toFilter.city_name : "To..."}
+            </Text>
+            {toFilter && (
+              <TouchableOpacity onPress={() => { setToFilter(null); subscribeTrips(fromFilter?.city_name, undefined, dateFrom, dateTo); subscribeOpenReqs(fromFilter?.city_name, undefined); }} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Date filter — always visible */}
-        <View style={styles.dateRow}>
+        {/* Date + Search row */}
+        <View style={styles.filterRow}>
           <TouchableOpacity
-            style={[
-              styles.dateChip,
-              hasDateFilter && styles.dateChipActive,
-              feedMode === "requests" && styles.dateChipDisabled,
-            ]}
-            onPress={() => feedMode !== "requests" && setDatePickerOpen(true)}
-            activeOpacity={feedMode !== "requests" ? 0.7 : 1}
+            style={[styles.dateChip, hasDateFilter && styles.dateChipActive]}
+            onPress={() => setDatePickerOpen(true)}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="calendar-outline"
-              size={14}
-              color={hasDateFilter && feedMode !== "requests" ? Colors.accent : "rgba(255,255,255,0.7)"}
+              size={15}
+              color={hasDateFilter ? Colors.accent : "rgba(255,255,255,0.8)"}
             />
-            <Text
-              style={[
-                styles.dateChipText,
-                hasDateFilter && feedMode !== "requests" && styles.dateChipTextActive,
-              ]}
-            >
+            <Text style={[styles.dateChipText, hasDateFilter && styles.dateChipTextActive]}>
               {dateLabel}
             </Text>
-            {hasDateFilter && feedMode !== "requests" && (
+            {hasDateFilter && (
               <TouchableOpacity
                 onPress={() => {
                   setDateFrom(null);
                   setDateTo(null);
                   subscribeTrips(fromFilter?.city_name, toFilter?.city_name, null, null);
                 }}
+                hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
               >
-                <Ionicons name="close-circle-outline" size={16} color={Colors.accent} />
+                <Ionicons name="close-circle" size={18} color={Colors.accent} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>
+
         </View>
 
         {/* Feed mode toggle */}
@@ -328,7 +284,7 @@ export default function HomeScreen() {
           <FlatList
             data={[
               ...trips.map((t) => ({ type: "trip" as const, id: t.id, data: t })),
-              ...openRequests.map((r) => ({ type: "request" as const, id: r.id, data: r })),
+              ...filteredOpenRequests.map((r) => ({ type: "request" as const, id: r.id, data: r })),
             ].sort((a, b) => {
               const aTime = (a.data.createdAt as any)?.seconds ?? 0;
               const bTime = (b.data.createdAt as any)?.seconds ?? 0;
@@ -391,7 +347,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           <FlatList
-            data={openRequests}
+            data={filteredOpenRequests}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <OpenRequestCard request={item} hasOffered={offeredRequestIds.has(item.id)} />
@@ -469,38 +425,33 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   searchRow: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
-  searchInput: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    gap: 8,
   },
-  flagSmall: {
-    fontSize: 16,
-  },
-  searchText: {
+  searchRowText: {
     flex: 1,
+    fontSize: 15,
     color: Colors.white,
-    fontSize: 14,
+    fontWeight: "500",
   },
-  searchPlaceholder: {
+  searchRowPlaceholder: {
     color: "rgba(255,255,255,0.5)",
+    fontWeight: "400",
   },
-  searchButton: {
-    backgroundColor: Colors.accent,
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+  inputsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 10,
     alignItems: "center",
-    justifyContent: "center",
   },
   bellWrapper: {
     position: "relative",
@@ -528,13 +479,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   dateChip: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 20,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
   },
   dateChipActive: {
     backgroundColor: Colors.white,
@@ -546,9 +498,6 @@ const styles = StyleSheet.create({
   },
   dateChipTextActive: {
     color: Colors.accent,
-  },
-  dateChipDisabled: {
-    opacity: 0.35,
   },
   list: {
     paddingTop: 16,
